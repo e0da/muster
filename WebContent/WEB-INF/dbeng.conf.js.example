@@ -1,0 +1,19 @@
+{
+  "databases" : [
+    {
+      "name" : "ggsedb",
+      "url" : "",
+      "username" : "",
+      "password" : "",
+      "driver" : ""
+    },
+    {
+      "name" : "courses",
+      "url" : "",
+      "username" : "",
+      "password" : "",
+      "driver" : ""
+    }
+  ]
+}
+
