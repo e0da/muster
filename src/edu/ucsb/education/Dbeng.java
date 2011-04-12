@@ -3,6 +3,11 @@ package edu.ucsb.education;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.UnsupportedEncodingException;
+import java.sql.Connection;
+import java.sql.DriverManager;
+import java.sql.SQLException;
+import java.util.HashMap;
+import java.util.LinkedList;
 
 import javax.servlet.ServletException;
 import javax.servlet.http.HttpServlet;
@@ -12,7 +17,7 @@ import javax.servlet.http.HttpServletResponse;
 import com.google.gson.Gson;
 import com.google.gson.stream.JsonReader;
 
-import edu.ucsb.education.DbengConfiguration.DataBaseDefinition;
+import edu.ucsb.education.DbengConfiguration.Database;
 
 /**
  * Servlet implementation class Dbeng
@@ -20,29 +25,49 @@ import edu.ucsb.education.DbengConfiguration.DataBaseDefinition;
 public class Dbeng extends HttpServlet {
 	private static final long serialVersionUID = 1L;
 
-	public void init() {
-		// get and use configuration from JSON config file
-		// build or set connections list as read from config
+	private DbengConfiguration conf;
+	private HashMap<String, Connection> connections;
+	private LinkedList<String> driverNames;
 
-		// Gson noodling
+	public void init() {
+
+		connections = new HashMap<String, Connection>();
+		driverNames = new LinkedList<String>();
+
 		Gson gson = new Gson();
 		JsonReader reader = null;
 		try {
 			reader = new JsonReader(new InputStreamReader(getServletContext()
 					.getResourceAsStream("/WEB-INF/dbeng.conf.js"), "UTF-8"));
 		} catch (UnsupportedEncodingException e) {
-			log(e.toString());
 			e.printStackTrace();
 		}
+		conf = gson.fromJson(reader, DbengConfiguration.class);
 
-		DbengConfiguration conf = gson.fromJson(reader,
-				DbengConfiguration.class);
-		log(conf.databases[0].name);
-		for (DataBaseDefinition def : conf.databases) {
-			log(def.name);
+		for (Database db : conf.getDatabases()) {
+			if (!driverNames.contains(db.getDriver())) {
+				String driver = db.getDriver();
+				driverNames.add(driver);
+				try {
+					Class.forName(driver);
+				} catch (ClassNotFoundException e) {
+					log("Could not load driver `" + driver + "`");
+					e.printStackTrace();
+				}
+			}
+			try {
+				connections.put(
+						db.getName(),
+						DriverManager.getConnection(db.getUrl(),
+								db.getUsername(), db.getPassword()));
+				log(connections.toString());
+			} catch (SQLException e) {
+				log("SQLException using driver `" + db.getDriver() + "`, url `"
+						+ db.getUrl() + "`, username `" + db.getUsername()
+						+ "`, password filtered");
+				e.printStackTrace();
+			}
 		}
-		log(gson.toJson(conf, DbengConfiguration.class));
-		// end Gson noodling
 	}
 
 	/**
