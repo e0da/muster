@@ -27,27 +27,18 @@ public class Dbeng extends HttpServlet {
 
 	private DbengConfiguration conf;
 	private HashMap<String, Connection> connections;
-	private LinkedList<String> driverNames;
+	private LinkedList<String> drivers;
 
 	public void init() {
 
 		connections = new HashMap<String, Connection>();
-		driverNames = new LinkedList<String>();
-
-		Gson gson = new Gson();
-		JsonReader reader = null;
-		try {
-			reader = new JsonReader(new InputStreamReader(getServletContext()
-					.getResourceAsStream("/WEB-INF/dbeng.conf.js"), "UTF-8"));
-		} catch (UnsupportedEncodingException e) {
-			e.printStackTrace();
-		}
-		conf = gson.fromJson(reader, DbengConfiguration.class);
+		drivers = new LinkedList<String>();
+		conf = loadConfiguration();
 
 		for (Database db : conf.getDatabases()) {
-			if (!driverNames.contains(db.getDriver())) {
-				String driver = db.getDriver();
-				driverNames.add(driver);
+			String driver = db.getDriver();
+			if (!drivers.contains(driver)) {
+				drivers.add(driver);
 				try {
 					Class.forName(driver);
 				} catch (ClassNotFoundException e) {
@@ -60,7 +51,7 @@ public class Dbeng extends HttpServlet {
 						db.getName(),
 						DriverManager.getConnection(db.getUrl(),
 								db.getUsername(), db.getPassword()));
-				log(connections.toString());
+				log(connections.toString()); // TODO DEBUG
 			} catch (SQLException e) {
 				log("SQLException using driver `" + db.getDriver() + "`, url `"
 						+ db.getUrl() + "`, username `" + db.getUsername()
@@ -68,6 +59,20 @@ public class Dbeng extends HttpServlet {
 				e.printStackTrace();
 			}
 		}
+	}
+
+	private DbengConfiguration loadConfiguration() {
+		// Maybe rewrite as getConfiguration, and check the file mtime before
+		// reading it, then read it and reload configuration if it's changed.
+		Gson gson = new Gson();
+		JsonReader reader = null;
+		try {
+			reader = new JsonReader(new InputStreamReader(getServletContext()
+					.getResourceAsStream("/WEB-INF/dbeng.conf.js"), "UTF-8"));
+		} catch (UnsupportedEncodingException e) {
+			e.printStackTrace();
+		}
+		return gson.fromJson(reader, DbengConfiguration.class);
 	}
 
 	/**
