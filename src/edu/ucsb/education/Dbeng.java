@@ -1,5 +1,6 @@
 package edu.ucsb.education;
 
+import java.io.File;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.UnsupportedEncodingException;
@@ -25,18 +26,25 @@ import edu.ucsb.education.DbengConfiguration.Database;
 public class Dbeng extends HttpServlet {
 	private static final long serialVersionUID = 1L;
 
+	private static final String confPath = "/WEB-INF/dbeng.conf.js";
+
 	private DbengConfiguration conf;
 	private HashMap<String, Connection> connections;
 	private LinkedList<String> drivers;
+	private LinkedList<String> reloadFilePaths;
 
 	public void init() {
 
 		connections = new HashMap<String, Connection>();
 		drivers = new LinkedList<String>();
+		reloadFilePaths = new LinkedList<String>();
 		conf = loadConfiguration();
 
-		for (Database db : conf.getDatabases()) {
-			String driver = db.getDriver();
+		reloadFilePaths.add(confPath);
+		reloadFilePaths.add(conf.reloadFilePath);
+
+		for (Database db : conf.databases) {
+			String driver = db.driver;
 			if (!drivers.contains(driver)) {
 				drivers.add(driver);
 				try {
@@ -47,14 +55,11 @@ public class Dbeng extends HttpServlet {
 				}
 			}
 			try {
-				connections.put(
-						db.getName(),
-						DriverManager.getConnection(db.getUrl(),
-								db.getUsername(), db.getPassword()));
-				log(connections.toString()); // TODO DEBUG
+				connections.put(db.name, DriverManager.getConnection(db.url,
+						db.username, db.password));
 			} catch (SQLException e) {
-				log("SQLException using driver `" + db.getDriver() + "`, url `"
-						+ db.getUrl() + "`, username `" + db.getUsername()
+				log("SQLException using driver `" + db.driver + "`, url `"
+						+ db.url + "`, username `" + db.username
 						+ "`, password filtered");
 				e.printStackTrace();
 			}
@@ -62,17 +67,21 @@ public class Dbeng extends HttpServlet {
 	}
 
 	private DbengConfiguration loadConfiguration() {
-		// Maybe rewrite as getConfiguration, and check the file mtime before
-		// reading it, then read it and reload configuration if it's changed.
+
 		Gson gson = new Gson();
 		JsonReader reader = null;
+		DbengConfiguration loadedConf = null;
+
 		try {
 			reader = new JsonReader(new InputStreamReader(getServletContext()
-					.getResourceAsStream("/WEB-INF/dbeng.conf.js"), "UTF-8"));
+					.getResourceAsStream(confPath), "UTF-8"));
 		} catch (UnsupportedEncodingException e) {
 			e.printStackTrace();
 		}
-		return gson.fromJson(reader, DbengConfiguration.class);
+
+		loadedConf = gson.fromJson(reader, DbengConfiguration.class);
+		loadedConf.lastLoaded = System.currentTimeMillis();
+		return loadedConf;
 	}
 
 	/**
@@ -86,7 +95,32 @@ public class Dbeng extends HttpServlet {
 		 * with exactly one server and one SQL statement defined
 		 */
 
+		reinitializeIfNeeded();
+
 		// Check connection status and re-establish if necessary
 		// REMEMBER to set content type to UTF-8 BEFORE creating PrintWriter
+	}
+
+	private void reinitializeIfNeeded() {
+
+		long lastLoaded = conf.lastLoaded;
+
+		for (String path : reloadFilePaths) {
+			String realPath = getServletContext().getRealPath(path);
+			long mtime = new File(realPath).lastModified();
+			if (mtime != 0) {
+				// Found a copy in Context. Remember that for the log.
+				path = realPath;
+			} else {
+				// No Context copy. Try for an absolute path copy.
+				mtime = new File(path).lastModified();
+			}
+			if (mtime > lastLoaded) {
+				log(path + " modified.");
+				log("Reinitializing...");
+				init();
+				return;
+			}
+		}
 	}
 }
