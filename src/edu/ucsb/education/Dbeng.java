@@ -4,11 +4,15 @@ import java.io.File;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.UnsupportedEncodingException;
+import java.lang.reflect.Constructor;
 import java.sql.Connection;
+import java.sql.Driver;
 import java.sql.DriverManager;
 import java.sql.SQLException;
+import java.util.Enumeration;
 import java.util.HashMap;
 import java.util.LinkedList;
+import java.util.Map;
 
 import javax.servlet.ServletException;
 import javax.servlet.http.HttpServlet;
@@ -30,38 +34,80 @@ public class Dbeng extends HttpServlet {
 
 	private DbengConfiguration conf;
 	private HashMap<String, Connection> connections;
-	private LinkedList<String> drivers;
 	private LinkedList<String> reloadFilePaths;
 
 	public void init() {
 
 		connections = new HashMap<String, Connection>();
-		drivers = new LinkedList<String>();
 		reloadFilePaths = new LinkedList<String>();
 		conf = loadConfiguration();
 
 		reloadFilePaths.add(confPath);
 		reloadFilePaths.add(conf.reloadFilePath);
 
+		testDatabaseConnectivity();
+
+	}
+
+	private void testDatabaseConnectivity() {
+
+		// load drivers
 		for (Database db : conf.databases) {
-			String driver = db.driver;
-			if (!drivers.contains(driver)) {
-				drivers.add(driver);
+			try {
+				DriverManager.getDriver(db.url);
+			} catch (SQLException e) {
+				// DriverManager
+				// .registerDriver(new com.filemaker.jdbc.Driver());
 				try {
-					Class.forName(driver);
-				} catch (ClassNotFoundException e) {
-					log("Could not load driver `" + driver + "`");
-					e.printStackTrace();
+					DriverManager.registerDriver((Driver) Class
+							.forName(db.driver).getConstructor()
+							.newInstance((Object[]) null));
+				} catch (Exception e1) {
+					log("A driver couldn't be loaded. Check the config file and try again. driver: `"
+							+ db.driver + "`, confPath: `" + confPath + "`");
+					e1.printStackTrace();
 				}
 			}
+		}
+
+		// connect and test setReadOnly
+		for (Database db : conf.databases) {
+
+			// Add the connection to our list and try setting readOnly to test
 			try {
 				connections.put(db.name, DriverManager.getConnection(db.url,
 						db.username, db.password));
 			} catch (SQLException e) {
-				log("SQLException using driver `" + db.driver + "`, url `"
-						+ db.url + "`, username `" + db.username
-						+ "`, password filtered");
+				log("Could not connect to `" + db.name + "`");
 				e.printStackTrace();
+			}
+			for (Map.Entry<String, Connection> entry : connections.entrySet()) {
+				String name = entry.getKey();
+				Connection connection = entry.getValue();
+				try {
+					connection.setReadOnly(true);
+				} catch (SQLException e) {
+					log("Could not set readOnly for `" + name + "`");
+					e.printStackTrace();
+				}
+				try {
+					connection.close();
+				} catch (SQLException e) {
+					log("Could not close `" + name + "`");
+					e.printStackTrace();
+				}
+			}
+		}
+
+		// unload drivers
+		for (Enumeration<Driver> e = DriverManager.getDrivers(); e
+				.hasMoreElements();) {
+			Driver driver = e.nextElement();
+			try {
+				DriverManager.deregisterDriver(driver);
+			} catch (SQLException e1) {
+				log("Could not deregister driver: `" + driver.toString() + "`");
+				e1.printStackTrace();
 			}
 		}
 	}
@@ -91,8 +137,28 @@ public class Dbeng extends HttpServlet {
 	protected void doGet(HttpServletRequest request,
 			HttpServletResponse response) throws ServletException, IOException {
 		/*
-		 * parse requests from JSON There can be multiple request objects, each
+		 * parse requests from JSON. There can be multiple request objects, each
 		 * with exactly one server and one SQL statement defined
+		 */
+
+		/*
+		 * Figure out which connections we need
+		 * 
+		 * Load drivers
+		 * 
+		 * Establish connections
+		 * 
+		 * Perform queries
+		 * 
+		 * Construct JSON object
+		 * 
+		 * Close connections
+		 * 
+		 * Jettison drivers
+		 * 
+		 * Write JSON to PrintWriter
+		 * 
+		 * GTFO
 		 */
 
 		reinitializeIfNeeded();
