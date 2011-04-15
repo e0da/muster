@@ -4,7 +4,6 @@ import java.io.File;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.UnsupportedEncodingException;
-import java.lang.reflect.Constructor;
 import java.sql.Connection;
 import java.sql.Driver;
 import java.sql.DriverManager;
@@ -56,8 +55,6 @@ public class Dbeng extends HttpServlet {
 			try {
 				DriverManager.getDriver(db.url);
 			} catch (SQLException e) {
-				// DriverManager
-				// .registerDriver(new com.filemaker.jdbc.Driver());
 				try {
 					DriverManager.registerDriver((Driver) Class
 							.forName(db.driver).getConstructor()
