@@ -3,6 +3,7 @@ package edu.ucsb.education;
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStreamReader;
+import java.io.PrintWriter;
 import java.io.UnsupportedEncodingException;
 import java.sql.Connection;
 import java.sql.Driver;
@@ -33,6 +34,11 @@ public class Dbeng extends HttpServlet {
 
 	private DbengConfiguration conf;
 	private HashMap<String, Connection> connections;
+
+	/**
+	 * If any of the files at these paths change, we should reinitialize the
+	 * servlet.
+	 */
 	private LinkedList<String> reloadFilePaths;
 
 	public void init() {
@@ -45,7 +51,6 @@ public class Dbeng extends HttpServlet {
 		reloadFilePaths.add(conf.reloadFilePath);
 
 		testDatabaseConnectivity();
-
 	}
 
 	private void testDatabaseConnectivity() {
@@ -133,10 +138,23 @@ public class Dbeng extends HttpServlet {
 	 */
 	protected void doGet(HttpServletRequest request,
 			HttpServletResponse response) throws ServletException, IOException {
+
+		reinitializeIfReloadFilesHaveChanged();
+
 		/*
 		 * parse requests from JSON. There can be multiple request objects, each
 		 * with exactly one server and one SQL statement defined
 		 */
+
+		String json = request.getParameter("json");
+			
+		response.setCharacterEncoding("UTF-8");
+		PrintWriter writer = response.getWriter();
+		// response.setContentType("application/json");
+		response.setContentType("text/html");
+		
+		writer.print(json);
+		writer.close();
 
 		/*
 		 * Figure out which connections we need
@@ -158,13 +176,10 @@ public class Dbeng extends HttpServlet {
 		 * GTFO
 		 */
 
-		reinitializeIfNeeded();
-
-		// Check connection status and re-establish if necessary
 		// REMEMBER to set content type to UTF-8 BEFORE creating PrintWriter
 	}
 
-	private void reinitializeIfNeeded() {
+	private void reinitializeIfReloadFilesHaveChanged() {
 
 		long lastLoaded = conf.lastLoaded;
 
