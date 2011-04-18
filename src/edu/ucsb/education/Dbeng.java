@@ -198,10 +198,14 @@ public class Dbeng extends HttpServlet {
 			writer.println("\"results\" : [ ");
 
 			int i = 1;
+
+			out = "";
+			
 			while (results.next()) {
+
 				i++;
-				
-				out = "[ ";
+				out += "[ ";
+
 				for (String column : columns) {
 					out += '"' + results.getString(column) + "\", ";
 				}
