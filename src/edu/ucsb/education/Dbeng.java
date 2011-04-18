@@ -150,9 +150,9 @@ public class Dbeng extends HttpServlet {
 		String order = request.getParameter("order");
 
 		// Construct query string
-		String query = "select " + select + " from " + from
-				+ ((where == null) ? "" : " where " + where)
-				+ ((order == null) ? "" : " order by " + order + " limit 10");
+		String query = "SELECT " + select + " FROM " + from
+				+ ((where == null) ? "" : " WHERE " + where)
+				+ ((order == null) ? "" : " ORDER BY " + order);
 
 		log(query);
 
@@ -174,22 +174,52 @@ public class Dbeng extends HttpServlet {
 			ResultSet results = statement.getResultSet();
 			ResultSetMetaData meta = results.getMetaData();
 			int columnCount = meta.getColumnCount();
-			LinkedList<String> columnNames = new LinkedList<String>();
+			LinkedList<String> columns = new LinkedList<String>();
 			for (int i = 1; i < columnCount + 1; i++) {
-				columnNames.add(meta.getColumnName(i));
+				columns.add(meta.getColumnName(i));
 			}
 
-			int i = 0;
+			writer.println("{ \"columns\" : [ ");
+
+			// Reusable output buffer
+			String out = "";
+
+			for (String column : columns) {
+				out += "\"" + column + "\", ";
+			}
+
+			// remove the trailing ", "
+			out = out.substring(0, out.length() - 2);
+
+			out += " ], ";
+
+			writer.println(out);
+
+			writer.println("\"results\" : [ ");
+
+			int i = 1;
 			while (results.next()) {
-				String out = "";
-				out += new Integer(i).toString() + ": ";
-				for (String column : columnNames) {
-					out += column + ": ";
+				i++;
+				
+				out = "[ ";
+				for (String column : columns) {
 					out += '"' + results.getString(column) + "\", ";
 				}
-//				log(out);
-				writer.println(out);
+
+				// remove the trailing ", " and add a line break
+				out = out.substring(0, out.length() - 2);
+
+				out += " ],\n";
 			}
+
+			// remove the trailing ", "
+			out = out.substring(0, out.length() - 2);
+
+			writer.println(out);
+
+			writer.println("]");
+
+			writer.println("}");
 
 			// deregister driver
 			try {
