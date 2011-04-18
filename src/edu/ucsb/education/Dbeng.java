@@ -8,11 +8,12 @@ import java.io.UnsupportedEncodingException;
 import java.sql.Connection;
 import java.sql.Driver;
 import java.sql.DriverManager;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
+import java.sql.ResultSetMetaData;
 import java.sql.SQLException;
 import java.util.Enumeration;
-import java.util.HashMap;
 import java.util.LinkedList;
-import java.util.Map;
 
 import javax.servlet.ServletException;
 import javax.servlet.http.HttpServlet;
@@ -33,7 +34,6 @@ public class Dbeng extends HttpServlet {
 	private static final String confPath = "/WEB-INF/dbeng.conf.js";
 
 	private DbengConfiguration conf;
-	private HashMap<String, Connection> connections;
 
 	/**
 	 * If any of the files at these paths change, we should reinitialize the
@@ -43,10 +43,10 @@ public class Dbeng extends HttpServlet {
 
 	public void init() {
 
-		connections = new HashMap<String, Connection>();
-		reloadFilePaths = new LinkedList<String>();
 		conf = loadConfiguration();
 
+		// Set reloadPaths
+		reloadFilePaths = new LinkedList<String>();
 		reloadFilePaths.add(confPath);
 		reloadFilePaths.add(conf.reloadFilePath);
 
@@ -76,28 +76,25 @@ public class Dbeng extends HttpServlet {
 		for (Database db : conf.databases) {
 
 			// Add the connection to our list and try setting readOnly to test
+			Connection connection = null;
 			try {
-				connections.put(db.name, DriverManager.getConnection(db.url,
-						db.username, db.password));
+				connection = DriverManager.getConnection(db.url, db.username,
+						db.password);
 			} catch (SQLException e) {
 				log("Could not connect to `" + db.name + "`");
 				e.printStackTrace();
 			}
-			for (Map.Entry<String, Connection> entry : connections.entrySet()) {
-				String name = entry.getKey();
-				Connection connection = entry.getValue();
-				try {
-					connection.setReadOnly(true);
-				} catch (SQLException e) {
-					log("Could not set readOnly for `" + name + "`");
-					e.printStackTrace();
-				}
-				try {
-					connection.close();
-				} catch (SQLException e) {
-					log("Could not close `" + name + "`");
-					e.printStackTrace();
-				}
+			try {
+				connection.setReadOnly(true);
+			} catch (SQLException e) {
+				log("Could not set readOnly for `" + db.name + "`");
+				e.printStackTrace();
+			}
+			try {
+				connection.close();
+			} catch (SQLException e) {
+				log("Could not close `" + db.name + "`");
+				e.printStackTrace();
 			}
 		}
 
@@ -146,14 +143,69 @@ public class Dbeng extends HttpServlet {
 		 * with exactly one server and one SQL statement defined
 		 */
 
-		String json = request.getParameter("json");
-			
+		String database = request.getParameter("database");
+		String select = request.getParameter("select");
+		String from = request.getParameter("from");
+		String where = request.getParameter("where");
+		String order = request.getParameter("order");
+
+		// Construct query string
+		String query = "select " + select + " from " + from
+				+ ((where == null) ? "" : " where " + where)
+				+ ((order == null) ? "" : " order by " + order + " limit 10");
+
+		log(query);
+
 		response.setCharacterEncoding("UTF-8");
 		PrintWriter writer = response.getWriter();
 		// response.setContentType("application/json");
 		response.setContentType("text/html");
-		
-		writer.print(json);
+
+		// fiddling
+		try {
+			Database db = conf.getDatabase(database);
+			// Register and save a reference to driver
+			Driver driver = registerDriver(db.driver, db.url);
+
+			Connection connection = DriverManager.getConnection(db.url,
+					db.username, db.password);
+			PreparedStatement statement = connection.prepareStatement(query);
+			statement.execute();
+			ResultSet results = statement.getResultSet();
+			ResultSetMetaData meta = results.getMetaData();
+			int columnCount = meta.getColumnCount();
+			LinkedList<String> columnNames = new LinkedList<String>();
+			for (int i = 1; i < columnCount + 1; i++) {
+				columnNames.add(meta.getColumnName(i));
+			}
+
+			int i = 0;
+			while (results.next()) {
+				String out = "";
+				out += new Integer(i).toString() + ": ";
+				for (String column : columnNames) {
+					out += column + ": ";
+					out += '"' + results.getString(column) + "\", ";
+				}
+//				log(out);
+				writer.println(out);
+			}
+
+			// deregister driver
+			try {
+				DriverManager.deregisterDriver(driver);
+			} catch (SQLException e) {
+				log("Could not deregister driver `" + driver + "` for url `"
+						+ db.url + "`");
+				e.printStackTrace();
+			}
+		} catch (SQLException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+
+		// end fiddling
+
 		writer.close();
 
 		/*
@@ -177,6 +229,18 @@ public class Dbeng extends HttpServlet {
 		 */
 
 		// REMEMBER to set content type to UTF-8 BEFORE creating PrintWriter
+	}
+
+	private Driver registerDriver(String driver, String url) {
+		try {
+			DriverManager.registerDriver((Driver) Class.forName(driver)
+					.getConstructor().newInstance((Object[]) null));
+			return DriverManager.getDriver(url);
+		} catch (Exception e) {
+			log("Could not load driver `" + driver + "` for url `" + url + "`");
+			e.printStackTrace();
+		}
+		return null;
 	}
 
 	private void reinitializeIfReloadFilesHaveChanged() {

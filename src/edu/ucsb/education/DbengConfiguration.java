@@ -11,10 +11,6 @@ public class DbengConfiguration {
 	private DbengConfiguration() {
 	}
 
-	public void addDatabaseDefinition(Database def) {
-		databases.add(def);
-	}
-
 	public Database getDatabase(String name) {
 		for (Database def : databases) {
 			if (def.name.equals(name)) {
@@ -22,10 +18,6 @@ public class DbengConfiguration {
 			}
 		}
 		return null;
-	}
-
-	public Database getDatabase(int index) {
-		return databases.get(index);
 	}
 
 	public static class Database {
