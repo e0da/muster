@@ -1,4 +1,4 @@
-package edu.ucsb.education;
+package edu.education.ucsb.muster;
 
 import java.io.File;
 import java.io.IOException;
@@ -16,39 +16,51 @@ import java.util.Enumeration;
 import java.util.LinkedList;
 
 import javax.servlet.ServletException;
+import javax.servlet.annotation.WebServlet;
 import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 
+import org.apache.commons.lang.StringEscapeUtils;
+import org.apache.commons.lang.StringUtils;
+
 import com.google.gson.Gson;
 import com.google.gson.stream.JsonReader;
 
-import edu.ucsb.education.DbengConfiguration.Database;
+import edu.education.ucsb.muster.MusterConfiguration.DatabaseDefinition;
 
 /**
- * Servlet implementation class Dbeng
+ * Servlet implementation class MusterServlet
  */
-public class Dbeng extends HttpServlet {
+@WebServlet(description = "Respond to GET requests with JSON-formatted data from databases", urlPatterns = { "/muster" })
+public class MusterServlet extends HttpServlet {
 	private static final long serialVersionUID = 1L;
 
-	private static final String confPath = "/WEB-INF/dbeng.conf.js";
+	private static final String confPath = "/WEB-INF/muster.conf.js";
 
-	private DbengConfiguration conf;
+	private MusterConfiguration conf;
 
 	/**
 	 * If any of the files at these paths change, we should reinitialize the
 	 * servlet.
 	 */
-	private LinkedList<String> reloadFilePaths;
+	private static LinkedList<String> reloadFilePaths;
+
+	private static LinkedList<String> requiredParameters = new LinkedList<String>();
 
 	public void init() {
 
 		conf = loadConfiguration();
 
-		// Set reloadPaths
+		// Set reload paths
 		reloadFilePaths = new LinkedList<String>();
 		reloadFilePaths.add(confPath);
 		reloadFilePaths.add(conf.reloadFilePath);
+
+		// Set required GET parameters
+		requiredParameters.add("database");
+		requiredParameters.add("select");
+		requiredParameters.add("from");
 
 		testDatabaseConnectivity();
 	}
@@ -56,7 +68,7 @@ public class Dbeng extends HttpServlet {
 	private void testDatabaseConnectivity() {
 
 		// load drivers
-		for (Database db : conf.databases) {
+		for (DatabaseDefinition db : conf.databases) {
 			try {
 				DriverManager.getDriver(db.url);
 			} catch (SQLException e) {
@@ -73,7 +85,7 @@ public class Dbeng extends HttpServlet {
 		}
 
 		// connect and test setReadOnly
-		for (Database db : conf.databases) {
+		for (DatabaseDefinition db : conf.databases) {
 
 			// Add the connection to our list and try setting readOnly to test
 			Connection connection = null;
@@ -111,20 +123,23 @@ public class Dbeng extends HttpServlet {
 		}
 	}
 
-	private DbengConfiguration loadConfiguration() {
+	private MusterConfiguration loadConfiguration() {
 
 		Gson gson = new Gson();
 		JsonReader reader = null;
-		DbengConfiguration loadedConf = null;
+		MusterConfiguration loadedConf = null;
 
 		try {
 			reader = new JsonReader(new InputStreamReader(getServletContext()
 					.getResourceAsStream(confPath), "UTF-8"));
 		} catch (UnsupportedEncodingException e) {
 			e.printStackTrace();
+		} catch (NullPointerException e) {
+			log("Couldn't open config file `" + confPath + "`");
+			e.printStackTrace();
 		}
 
-		loadedConf = gson.fromJson(reader, DbengConfiguration.class);
+		loadedConf = gson.fromJson(reader, MusterConfiguration.class);
 		loadedConf.lastLoaded = System.currentTimeMillis();
 		return loadedConf;
 	}
@@ -143,6 +158,14 @@ public class Dbeng extends HttpServlet {
 		 * with exactly one server and one SQL statement defined
 		 */
 
+		try {
+			checkRequestValidity(request);
+		} catch (InvalidRequestException e) {
+			log("Invalid request. Check parameters.");
+			e.printStackTrace();
+			return;
+		}
+
 		String database = request.getParameter("database");
 		String select = request.getParameter("select");
 		String from = request.getParameter("from");
@@ -158,12 +181,12 @@ public class Dbeng extends HttpServlet {
 
 		response.setCharacterEncoding("UTF-8");
 		PrintWriter writer = response.getWriter();
-		// response.setContentType("application/json");
-		response.setContentType("text/html");
+		response.setContentType("application/json");
+		// response.setContentType("text/html");
 
 		// fiddling
 		try {
-			Database db = conf.getDatabase(database);
+			DatabaseDefinition db = conf.getDatabase(database);
 			// Register and save a reference to driver
 			Driver driver = registerDriver(db.driver, db.url);
 
@@ -182,48 +205,50 @@ public class Dbeng extends HttpServlet {
 			writer.println("{ \"columns\" : [ ");
 
 			// Reusable output buffer
-			String out = "";
+			StringBuffer out = new StringBuffer("");
 
+			// Cache StringBuffer out length as needed
+			int len;
+
+			// Add column names in JSON format
 			for (String column : columns) {
-				out += "\"" + column + "\", ";
+				out.append('"')
+						.append(StringEscapeUtils.escapeJavaScript(column))
+						.append("\", ");
 			}
 
-			// remove the trailing ", "
-			out = out.substring(0, out.length() - 2);
+			// remove the trailing ", " and add a line break and close the array
+			len = out.length();
+			out.delete(len - 2, len);
+			out.append(" ],\n");
 
-			out += " ], ";
+			// Add column values
+			out.append("\"results\" : [ ");
 
-			writer.println(out);
-
-			writer.println("\"results\" : [ ");
-
-			int i = 1;
-
-			out = "";
-			
 			while (results.next()) {
 
-				i++;
-				out += "[ ";
+				out.append("[ ");
 
 				for (String column : columns) {
-					out += '"' + results.getString(column) + "\", ";
+					out.append('"')
+							.append(StringEscapeUtils.escapeJavaScript(results
+									.getString(column))).append("\", ");
 				}
 
-				// remove the trailing ", " and add a line break
-				out = out.substring(0, out.length() - 2);
-
-				out += " ],\n";
+				// remove the trailing ", " and add a line break and close the
+				// array
+				len = out.length();
+				out.delete(len - 2, len);
+				out.append(" ],\n");
 			}
 
 			// remove the trailing ", "
-			out = out.substring(0, out.length() - 2);
+			len = out.length();
+			out.delete(len - 2, len);
+			out.append("]");
+			out.append("}");
 
 			writer.println(out);
-
-			writer.println("]");
-
-			writer.println("}");
 
 			// deregister driver
 			try {
@@ -263,6 +288,33 @@ public class Dbeng extends HttpServlet {
 		 */
 
 		// REMEMBER to set content type to UTF-8 BEFORE creating PrintWriter
+	}
+
+	private void checkRequestValidity(HttpServletRequest request)
+			throws InvalidRequestException {
+
+		boolean requiredParametersAreMissing = false;
+		LinkedList<String> missingRequiredParms = new LinkedList<String>();
+		for (String parm : requiredParameters) {
+			String val = request.getParameter(parm);
+			if (val == null || val.isEmpty()) {
+				requiredParametersAreMissing = true;
+				missingRequiredParms.add(parm);
+			}
+		}
+		if (requiredParametersAreMissing) {
+
+			String missingParmsString = "";
+			for (String parm : missingRequiredParms) {
+				missingParmsString += parm + ", ";
+			}
+			missingParmsString = missingParmsString.substring(0,
+					missingParmsString.length() - 2);
+			throw new InvalidRequestException(
+					"The request is invalid. Missing required parameter(s): "
+							+ missingParmsString);
+
+		}
 	}
 
 	private Driver registerDriver(String driver, String url) {
