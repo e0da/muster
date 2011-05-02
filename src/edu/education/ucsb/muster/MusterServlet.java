@@ -61,6 +61,7 @@ public class MusterServlet extends HttpServlet {
 		requiredParameters.add("database");
 		requiredParameters.add("select");
 		requiredParameters.add("from");
+		requiredParameters.add("callback");
 
 		testDatabaseConnectivity();
 	}
@@ -171,6 +172,7 @@ public class MusterServlet extends HttpServlet {
 		String from = request.getParameter("from");
 		String where = request.getParameter("where");
 		String order = request.getParameter("order");
+		String callback = request.getParameter("callback");
 
 		// Construct query string
 		String query = "SELECT " + select + " FROM " + from
@@ -184,7 +186,6 @@ public class MusterServlet extends HttpServlet {
 		response.setContentType("application/json");
 		// response.setContentType("text/html");
 
-		// fiddling
 		try {
 			DatabaseDefinition db = conf.getDatabase(database);
 			// Register and save a reference to driver
@@ -202,7 +203,8 @@ public class MusterServlet extends HttpServlet {
 				columns.add(meta.getColumnName(i));
 			}
 
-			writer.println("{ \"columns\" : [ ");
+			// TODO JSON fiddling
+			writer.println(callback + "({ \"columns\" : [ ");
 
 			// Reusable output buffer
 			StringBuffer out = new StringBuffer("");
@@ -246,9 +248,10 @@ public class MusterServlet extends HttpServlet {
 			len = out.length();
 			out.delete(len - 2, len);
 			out.append("]");
-			out.append("}");
+			out.append("})");
 
 			writer.println(out);
+			// TODO end JSON fiddling
 
 			// deregister driver
 			try {
