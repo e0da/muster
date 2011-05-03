@@ -3,7 +3,8 @@ $(function() {
   var database = "courses";
   var select = "*";
   var from = "coursesyear";
-  var where = "\"year\" = '2010-11' AND \"day\" = 'TR'";
+//  var where = "\"year\" = '2010-11' AND \"day\" = 'TR'";
+  var where = "\"year\" = '2010-11'";
   var query = url + "?database="+ escape(database) + "&select=" + escape(select) + "&from=" + escape(from) + "&where=" + escape(where);
   query += "&callback=?";
 
@@ -11,3 +12,4 @@ $(function() {
     console.log(data);
   });
 });
+
