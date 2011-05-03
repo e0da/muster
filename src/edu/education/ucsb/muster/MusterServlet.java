@@ -200,23 +200,31 @@ public class MusterServlet extends HttpServlet {
 			int columnCount = meta.getColumnCount();
 			LinkedList<String> columns = new LinkedList<String>();
 			for (int i = 1; i < columnCount + 1; i++) {
-				columns.add(meta.getColumnName(i));
+				// we're only dealing with JSON, so the column names should be
+				// JavaScript-friendly.
+				columns.add(StringEscapeUtils.escapeJavaScript(meta
+						.getColumnName(i)));
 			}
 
-			// TODO JSON fiddling
+			/*
+			 * TODO JSON fiddling
+			 * 
+			 * TODO Use the sidewaysmilk Java cache
+			 * 
+			 * TODO Make each row an object filled with key/value pairs?
+			 * StackOverflow question: http://j.mp/mlnFAP
+			 */
 			writer.println(callback + "({ \"columns\" : [ ");
 
 			// Reusable output buffer
 			StringBuffer out = new StringBuffer("");
 
-			// Cache StringBuffer out length as needed
+			// Cache StringBuffer length as needed
 			int len;
 
 			// Add column names in JSON format
 			for (String column : columns) {
-				out.append('"')
-						.append(StringEscapeUtils.escapeJavaScript(column))
-						.append("\", ");
+				out.append('"' + column + "\", ");
 			}
 
 			// remove the trailing ", " and add a line break and close the array
@@ -229,10 +237,14 @@ public class MusterServlet extends HttpServlet {
 
 			while (results.next()) {
 
-				out.append("[ ");
+				out.append("{ ");
 
 				for (String column : columns) {
+					// TODO make this clearer. Use a formatted string? Maybe
+					// just + concatenation?
 					out.append('"')
+							.append(column)
+							.append("\" :  \"")
 							.append(StringEscapeUtils.escapeJavaScript(results
 									.getString(column))).append("\", ");
 				}
@@ -241,7 +253,7 @@ public class MusterServlet extends HttpServlet {
 				// array
 				len = out.length();
 				out.delete(len - 2, len);
-				out.append(" ],\n");
+				out.append(" },\n");
 			}
 
 			// remove the trailing ", "
