@@ -22,10 +22,11 @@ import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 
 import org.apache.commons.lang.StringEscapeUtils;
-import org.apache.commons.lang.StringUtils;
 
 import com.google.gson.Gson;
 import com.google.gson.stream.JsonReader;
+import com.sidewaysmilk.Justache;
+import com.sidewaysmilk.JustacheKeyNotFoundException;
 
 import edu.education.ucsb.muster.MusterConfiguration.DatabaseDefinition;
 
@@ -48,9 +49,14 @@ public class MusterServlet extends HttpServlet {
 
 	private static LinkedList<String> requiredParameters = new LinkedList<String>();
 
+	private static Justache<String, String> cache;
+
 	public void init() {
 
 		conf = loadConfiguration();
+
+		// Initialize half hour cache
+		cache = new Justache<String, String>(30 * 60 * 1000);
 
 		// Set reload paths
 		reloadFilePaths = new LinkedList<String>();
@@ -179,130 +185,104 @@ public class MusterServlet extends HttpServlet {
 				+ ((where == null) ? "" : " WHERE " + where)
 				+ ((order == null) ? "" : " ORDER BY " + order);
 
-		log(query);
-
-		response.setCharacterEncoding("UTF-8");
-		PrintWriter writer = response.getWriter();
-		response.setContentType("application/json");
-		// response.setContentType("text/html");
-
+		// Attempt to retrieve query from cache. If it's expired or not present,
+		// perform the query and cache the result.
+		String out = null;
 		try {
-			DatabaseDefinition db = conf.getDatabase(database);
-			// Register and save a reference to driver
-			Driver driver = registerDriver(db.driver, db.url);
-
-			Connection connection = DriverManager.getConnection(db.url,
-					db.username, db.password);
-			PreparedStatement statement = connection.prepareStatement(query);
-			statement.execute();
-			ResultSet results = statement.getResultSet();
-			ResultSetMetaData meta = results.getMetaData();
-			int columnCount = meta.getColumnCount();
-			LinkedList<String> columns = new LinkedList<String>();
-			for (int i = 1; i < columnCount + 1; i++) {
-				// we're only dealing with JSON, so the column names should be
-				// JavaScript-friendly.
-				columns.add(StringEscapeUtils.escapeJavaScript(meta
-						.getColumnName(i)));
-			}
-
-			/*
-			 * TODO JSON fiddling
-			 * 
-			 * TODO Use the sidewaysmilk Java cache
-			 * 
-			 * TODO Make each row an object filled with key/value pairs?
-			 * StackOverflow question: http://j.mp/mlnFAP
-			 */
-			writer.println(callback + "({ \"columns\" : [ ");
-
-			// Reusable output buffer
-			StringBuffer out = new StringBuffer("");
-
-			// Cache StringBuffer length as needed
-			int len;
-
-			// Add column names in JSON format
-			for (String column : columns) {
-				out.append('"' + column + "\", ");
-			}
-
-			// remove the trailing ", " and add a line break and close the array
-			len = out.length();
-			out.delete(len - 2, len);
-			out.append(" ],\n");
-
-			// Add column values
-			out.append("\"results\" : [ ");
-
-			while (results.next()) {
-
-				out.append("{ ");
-
-				for (String column : columns) {
-					// TODO make this clearer. Use a formatted string? Maybe
-					// just + concatenation?
-					out.append('"')
-							.append(column)
-							.append("\" :  \"")
-							.append(StringEscapeUtils.escapeJavaScript(results
-									.getString(column))).append("\", ");
-				}
-
-				// remove the trailing ", " and add a line break and close the
-				// array
-				len = out.length();
-				out.delete(len - 2, len);
-				out.append(" },\n");
-			}
-
-			// remove the trailing ", "
-			len = out.length();
-			out.delete(len - 2, len);
-			out.append("]");
-			out.append("})");
-
-			writer.println(out);
-			// TODO end JSON fiddling
-
-			// deregister driver
+			out = cache.get(query);
+		} catch (JustacheKeyNotFoundException e) {
 			try {
-				DriverManager.deregisterDriver(driver);
-			} catch (SQLException e) {
-				log("Could not deregister driver `" + driver + "` for url `"
-						+ db.url + "`");
+				out = getOutputAsJson(database, query);
+				cache.put(query, out);
+			} catch (SQLException e1) {
 				e.printStackTrace();
 			}
-		} catch (SQLException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
 		}
 
-		// end fiddling
+		// Set headers and write response
+		response.setCharacterEncoding("UTF-8");
+		PrintWriter writer = response.getWriter();
+		response.setContentType("text/javascript");
+		writer.println(callback + '(' + out + ')');
+	}
 
-		writer.close();
+	private String getOutputAsJson(String database, String query)
+			throws SQLException {
 
-		/*
-		 * Figure out which connections we need
-		 * 
-		 * Load drivers
-		 * 
-		 * Establish connections
-		 * 
-		 * Perform queries
-		 * 
-		 * Construct JSON object
-		 * 
-		 * Close connections
-		 * 
-		 * Jettison drivers
-		 * 
-		 * Write JSON to PrintWriter
-		 * 
-		 * GTFO
-		 */
+		StringBuffer out = new StringBuffer("");
 
-		// REMEMBER to set content type to UTF-8 BEFORE creating PrintWriter
+		DatabaseDefinition db = conf.getDatabase(database);
+		// Register and save a reference to driver
+		Driver driver = registerDriver(db.driver, db.url);
+
+		Connection connection = DriverManager.getConnection(db.url,
+				db.username, db.password);
+		PreparedStatement statement = connection.prepareStatement(query);
+		statement.execute();
+		ResultSet results = statement.getResultSet();
+		ResultSetMetaData meta = results.getMetaData();
+		int columnCount = meta.getColumnCount();
+		LinkedList<String> columns = new LinkedList<String>();
+		for (int i = 1; i < columnCount + 1; i++) {
+			// We're only dealing with JSON, so the column names should be
+			// JavaScript-friendly.
+			columns.add(StringEscapeUtils.escapeJavaScript(meta
+					.getColumnName(i)));
+		}
+
+		out.append("{ \"columns\" : [ ");
+
+		// Cache StringBuffer length as needed
+		int len;
+
+		// Add column names in JSON format
+		for (String column : columns) {
+			out.append('"' + column + "\", ");
+		}
+
+		// remove the trailing ", " and add a line break and close the array
+		len = out.length();
+		out.delete(len - 2, len);
+		out.append(" ],\n");
+
+		// Add column values
+		out.append("\"results\" : [ ");
+
+		while (results.next()) {
+
+			out.append("{ ");
+
+			for (String column : columns) {
+				// output "column" : "value". Escape for JavaScript.
+				out.append(String.format("\"%s\": \"%s\", ", column,
+						StringEscapeUtils.escapeJavaScript(results
+								.getString(column))));
+			}
+
+			// remove the trailing ", " and add a line break and close the
+			// array
+			len = out.length();
+			out.delete(len - 2, len);
+			out.append(" },\n");
+		}
+
+		// remove the trailing ", "
+		len = out.length();
+		out.delete(len - 2, len);
+		out.append("]");
+		out.append("}");
+
+		out.append("\n");
+
+		// deregister driver
+		try {
+			DriverManager.deregisterDriver(driver);
+		} catch (SQLException e) {
+			log("Could not deregister driver `" + driver + "` for url `"
+					+ db.url + "`");
+			e.printStackTrace();
+		}
+		return out.toString();
 	}
 
 	private void checkRequestValidity(HttpServletRequest request)
