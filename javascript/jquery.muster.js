@@ -1,16 +1,14 @@
 jQuery.muster = function(options) {
 
-  var $muster = this;
+  /* TODO handle failed JSON requests */
 
-  console.log(options);
+  var $muster = this;
 
   var url = options.url;
   var database = options.database;
   var results;
 
   this.query = function(options) {
-
-    console.log(url);
 
     var query = [
       url,
