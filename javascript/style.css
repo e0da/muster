@@ -1,0 +1,10 @@
+tr:nth-child(odd) {
+  background:#ddd;
+}
+td {
+  min-width:8em;
+  padding:0.5em 1em;
+}
+th {
+  font-family:sans-serif;
+}
