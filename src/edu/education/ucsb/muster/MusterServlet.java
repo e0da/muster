@@ -195,7 +195,8 @@ public class MusterServlet extends HttpServlet {
 				out = getOutputAsJson(database, query);
 				cache.put(query, out);
 			} catch (SQLException e1) {
-				e.printStackTrace();
+				log(query);
+				e1.printStackTrace();
 			}
 		}
 
