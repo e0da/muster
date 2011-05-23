@@ -1,51 +1,152 @@
 $(function() {
 
-  /*
-  * 1. Test queries/confirm table/field names
-  *
-  * 2. Determine page layout
-  *
-  * 3. Optimize queries
-  */
+/*
+* 1. Test queries/confirm table/field names
+*
+* 2. Determine page layout
+*
+* 3. Optimize queries
+*/
 
   var ggsedb = muster({ 
     url: "http://harold.justinforce.com:8080/muster/muster",
-    database: "ggsedb"
+      database: "ggsedb"
   });
 
-//    where: "\"year\" = '2010-11'",
+  var blockingQueries = ['grants_and_contracts', 'grants_and_contracts_lookup', 'profile'];
 
-  var queries = [];
-
-  queries.push({
+  ggsedb.query({
     select: "id,title,year_begin,year_end,award_amount,source,abstract,\"grant closed\"",
     from: "grants_and_contracts",
-    where: ""
+    where: "",
+    order: "year_begin desc",
+    callback: function(results) {
+      blockingQueries['grants_and_contracts'] = results;
+      allBlockingQueriesFinished();
+    }
   });
 
-  queries.push({
+  ggsedb.query({
     select: "grants_and_contracts_id,profile_id,pi_type",
     from: "grants_and_contracts_lookup",
-    where: ""
+    where: "",
+    callback: function(results) {
+      blockingQueries['grants_and_contracts_lookup'] = results;
+      allBlockingQueriesFinished();
+    }
   });
 
-  queries.push({
-    select: "first_name,last_name",
+  ggsedb.query({
+    select: "id,first_name,last_name",
     from: "profile",
-    where: ""
+    where: "",
+    callback: function(results) {
+      blockingQueries['profile'] = results;
+      allBlockingQueriesFinished();
+    }
   });
 
-  $.each(queries, function() {
-    var rows = ggsedb.query({
-      select: this.select,
-      from: this.from,
-      where: this.where,
-      order: this.order,
-      callback: function(rows) {
-        $('body').append(ggsedb.toTable());
+  function allBlockingQueriesFinished() {
+    var finished = true;
+    $.each(blockingQueries, function() {
+      if (blockingQueries[this] == null) {
+        finished = false;
       }
     });
+    if (finished) {
+      $(window).trigger('allqueriesfinished');
+    }
+  }
+
+  $(window).bind('allqueriesfinished', function(e) {
+
+    //TODO this is where the magic happens. Now we have all of the data, it's time to do things with it.
+
+    /* reusable variables for table manipulation */
+    var table, thead, tbody, tr, td, columns;
+
+    var grantsAndContracts = blockingQueries['grants_and_contracts'];
+    var grantsAndContractsLookup = blockingQueries['grants_and_contracts_lookup'];
+    var profiles = blockingQueries['profile'];
+
+    columns = ['id', 'title'];
+    table = $('<table><thead><tr><tbody>');
+    thead = table.find('thead tr');
+    $.each(columns, function() {
+      thead.append('<th>' + this);
+    });
+
+    tbody = table.find('tbody');
+    $.each(grantsAndContracts.results, function() {
+      var result = this;
+      tr = $('<tr>');
+      tbody.append(tr);
+
+      /* Make the principal investigators cell */
+      td = $('<td>');
+
+      /* Get PIs */
+      var pis = $.grep(grantsAndContractsLookup.results, function(element, index) {
+        return element.grants_and_contracts_id == result.id;
+      });
+
+      /* Get the PIs' names and put them in the cell */
+      var names = [];
+      $.each(pis, function() {
+        var pi = this;
+        var people = $.grep(profiles.results, function(element, index) {
+          return element.id == pi.profile_id;
+        });
+        $.each(people, function() {
+          names.push(this.last_name + ', ' + this.first_name);
+        });
+      });
+      td.append(names.join(' / '));
+      tr.append(td);
+
+      /* Insert the title */
+      td = $('<td>');
+      var title = $('<a>').attr('href', '#');
+      title.text(result.title);
+      td.append(title);
+
+      /* When the title is clicked, toggle supplementary information */
+      title.toggle(function(e) {
+        e.stopPropagation();
+        e.preventDefault();
+        inner.slideDown();
+      }, function(e) {
+        e.stopPropagation();
+        e.preventDefault();
+        inner.slideUp();
+      });
+
+      tr.append(td);
+
+      /* Add supplementary information below title */
+      var innerRow = $('<tr>');
+      var innerCol = $('<td>');
+      var inner = $('<div>');
+      innerRow.append(innerCol);
+      innerCol.append(inner);
+      innerCol.attr('colspan', 2);
+      tr.after(innerRow);
+      inner.hide();
+
+      var dl = $('<dl>');
+      var fields = ['award_amount', 'year_begin', 'year_end', 'source', 'abstract'];
+      $.each(fields, function() {
+        if (result[this] != null && result[this] != "null") {
+          dl.append('<dt>' + this);
+          dl.append('<dd>' + result[this]);
+        }
+      });
+
+      inner.append(dl);
+    });
+
+    $('body').append(table);
+
   });
 
 });
-

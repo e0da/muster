@@ -3,7 +3,7 @@ body {
   font-family:Arial, Helvetica, sans-serif;
 }
 
-tr:nth-child(odd) {
+tr:nth-child(4n-3), tr:nth-child(4n-2) {
   background:#ddd;
 }
 
@@ -14,5 +14,18 @@ td {
 
 th {
   font-family:sans-serif;
+}
+
+dt {
+  font-weight:bold;
+}
+
+tr:nth-child(even) td {
+  padding:0;
+  margin:0;
+}
+
+tr:nth-child(even) div {
+  padding: 1em;
 }
 
