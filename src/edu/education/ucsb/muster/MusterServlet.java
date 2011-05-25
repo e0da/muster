@@ -184,6 +184,8 @@ public class MusterServlet extends HttpServlet {
 		String query = "SELECT " + select + " FROM " + from
 				+ ((where == null) ? "" : " WHERE " + where)
 				+ ((order == null) ? "" : " ORDER BY " + order);
+		
+		log(query);
 
 		// Attempt to retrieve query from cache. If it's expired or not present,
 		// perform the query and cache the result.

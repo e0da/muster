@@ -16,10 +16,10 @@ $(function() {
   var blockingQueries = ['grants_and_contracts', 'grants_and_contracts_lookup', 'profile'];
 
   ggsedb.query({
-    select: "id,title,year_begin,year_end,award_amount,source,abstract,\"grant closed\"",
+    select: "id,title,year_begin,year_end,award_amount,source,abstract",
     from: "grants_and_contracts",
-    where: "",
-    order: "year_begin desc",
+    where: "\"grant closed\" IS NULL AND (\"grant type\" = 'Grant' OR \"grant type\" = 'Income/MOU')",
+    order: "year_begin DESC",
     callback: function(results) {
       blockingQueries['grants_and_contracts'] = results;
       allBlockingQueriesFinished();
@@ -114,11 +114,11 @@ $(function() {
       title.toggle(function(e) {
         e.stopPropagation();
         e.preventDefault();
-        inner.slideDown();
+        inner.slideDown('fast');
       }, function(e) {
         e.stopPropagation();
         e.preventDefault();
-        inner.slideUp();
+        inner.slideUp('fast');
       });
 
       tr.append(td);
@@ -147,6 +147,11 @@ $(function() {
 
     $('body').append(table);
 
+    /* TODO this is for demo purposes. Scrutinize this later. */
+    $('body').prepend(
+      $('<strong>toggle all</strong>').click(function() {
+        $('a').click();
+      }).css({display: 'block', textAlign: 'right', cursor: 'pointer'})
+    );
   });
-
 });
