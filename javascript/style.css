@@ -4,7 +4,7 @@ body {
 }
 
 tr:nth-child(4n-3), tr:nth-child(4n-2) {
-  background:#ddd;
+  background:#dfeaff;
 }
 
 td {
