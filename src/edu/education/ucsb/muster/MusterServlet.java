@@ -12,8 +12,10 @@ import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.ResultSetMetaData;
 import java.sql.SQLException;
+import java.util.Calendar;
 import java.util.Enumeration;
 import java.util.LinkedList;
+import java.util.Random;
 
 import javax.servlet.ServletException;
 import javax.servlet.annotation.WebServlet;
@@ -184,7 +186,8 @@ public class MusterServlet extends HttpServlet {
 		String query = "SELECT " + select + " FROM " + from
 				+ ((where == null) ? "" : " WHERE " + where)
 				+ ((order == null) ? "" : " ORDER BY " + order);
-		
+
+		// Log the query (useful for debugging)
 		log(query);
 
 		// Attempt to retrieve query from cache. If it's expired or not present,
@@ -212,17 +215,35 @@ public class MusterServlet extends HttpServlet {
 	private String getOutputAsJson(String database, String query)
 			throws SQLException {
 
-		StringBuffer out = new StringBuffer("");
+		// The output string
+		StringBuffer out = new StringBuffer();
 
+		// Cache StringBuffer length as needed
+		int len;
+
+		// Database operations
 		DatabaseDefinition db = conf.getDatabase(database);
-		// Register and save a reference to driver
-		Driver driver = registerDriver(db.driver, db.url);
 
+		// //register the driver
+		registerDriver(db.driver, db.url);
+
+		// // Connect to the database
 		Connection connection = DriverManager.getConnection(db.url,
 				db.username, db.password);
+
+		// // Perform the query
 		PreparedStatement statement = connection.prepareStatement(query);
 		statement.execute();
 		ResultSet results = statement.getResultSet();
+
+		// return an empty JSON object if the found set is empty
+		results.last();
+		if (results.getRow() == 0) {
+			return "{}";
+		}
+		results.beforeFirst();
+
+		// Get and write the column names
 		ResultSetMetaData meta = results.getMetaData();
 		int columnCount = meta.getColumnCount();
 		LinkedList<String> columns = new LinkedList<String>();
@@ -232,11 +253,7 @@ public class MusterServlet extends HttpServlet {
 			columns.add(StringEscapeUtils.escapeJavaScript(meta
 					.getColumnName(i)));
 		}
-
 		out.append("{ \"columns\" : [ ");
-
-		// Cache StringBuffer length as needed
-		int len;
 
 		// Add column names in JSON format
 		for (String column : columns) {
@@ -263,7 +280,7 @@ public class MusterServlet extends HttpServlet {
 			}
 
 			// remove the trailing ", " and add a line break and close the
-			// array
+			// object
 			len = out.length();
 			out.delete(len - 2, len);
 			out.append(" },\n");
@@ -275,16 +292,6 @@ public class MusterServlet extends HttpServlet {
 		out.append("]");
 		out.append("}");
 
-		out.append("\n");
-
-		// deregister driver
-		try {
-			DriverManager.deregisterDriver(driver);
-		} catch (SQLException e) {
-			log("Could not deregister driver `" + driver + "` for url `"
-					+ db.url + "`");
-			e.printStackTrace();
-		}
 		return out.toString();
 	}
 
