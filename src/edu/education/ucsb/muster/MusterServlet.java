@@ -56,7 +56,7 @@ public class MusterServlet extends HttpServlet {
 		conf = loadConfiguration();
 
 		// Initialize half hour cache
-		cache = new Justache<String, String>(30 * 60 * 1000);
+		cache = getJustache();
 
 		// Set reload paths
 		reloadFilePaths = new LinkedList<String>();
@@ -70,6 +70,10 @@ public class MusterServlet extends HttpServlet {
 		requiredParameters.add("callback");
 
 		testDatabaseConnectivity();
+	}
+
+	private Justache<String, String> getJustache() {
+		return new Justache<String, String>(30 * 60 * 1000);
 	}
 
 	private void testDatabaseConnectivity() {
@@ -191,6 +195,18 @@ public class MusterServlet extends HttpServlet {
 		// Attempt to retrieve query from cache. If it's expired or not present,
 		// perform the query and cache the result.
 		String out = null;
+
+		// Just in case the servlet ever decides that the cache thread should be
+		// killed (it looks like a potential memory leak by nature), check to
+		// make sure it's there before we get started.
+		try {
+			cache.getThread();
+		} catch (NullPointerException e) {
+			log("Cache thread died!");
+			e.printStackTrace();
+			cache = getJustache();
+		}
+
 		try {
 			out = cache.get(query);
 		} catch (JustacheKeyNotFoundException e) {
