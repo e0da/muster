@@ -37,6 +37,10 @@ public class MusterServlet extends HttpServlet {
 
 	private static final String confPath = "/WEB-INF/muster.conf.js";
 
+	private static final int cacheTTL = 30 * 60 * 1000; // 30 minutes
+
+	private static final int cacheMaxLength = 128;
+
 	private MusterConfiguration conf;
 
 	/**
@@ -45,13 +49,9 @@ public class MusterServlet extends HttpServlet {
 	 */
 	private static LinkedList<String> reloadFilePaths;
 
-	private static LinkedList<String> requiredParameters = new LinkedList<String>();
+	private static LinkedList<String> requiredParameters;
 
 	private static Justache<String, String> cache;
-	
-	private static final int cacheTTL = 30 * 60 * 1000; // 30 minutes
-	
-	private static final int cacheMaxLength = 128;
 
 	public void init() {
 
@@ -66,6 +66,7 @@ public class MusterServlet extends HttpServlet {
 		reloadFilePaths.add(conf.reloadFilePath);
 
 		// Set required GET parameters
+		requiredParameters = new LinkedList<String>();
 		requiredParameters.add("database");
 		requiredParameters.add("select");
 		requiredParameters.add("from");
@@ -73,7 +74,7 @@ public class MusterServlet extends HttpServlet {
 
 		testDatabaseConnectivity();
 	}
-	
+
 	public void destroy() {
 		cache.die();
 	}
@@ -109,33 +110,14 @@ public class MusterServlet extends HttpServlet {
 			try {
 				connection = DriverManager.getConnection(db.url, db.username,
 						db.password);
-			} catch (SQLException e) {
-				log("Could not connect to `" + db.name + "`");
-				e.printStackTrace();
-			}
-			try {
 				connection.setReadOnly(true);
-			} catch (SQLException e) {
-				log("Could not set readOnly for `" + db.name + "`");
-				e.printStackTrace();
-			}
-			try {
 				connection.close();
-			} catch (SQLException e) {
-				log("Could not close `" + db.name + "`");
-				e.printStackTrace();
-			}
-		}
+			} catch (Exception e) {
 
-		// unload drivers
-		for (Enumeration<Driver> e = DriverManager.getDrivers(); e
-				.hasMoreElements();) {
-			Driver driver = e.nextElement();
-			try {
-				DriverManager.deregisterDriver(driver);
-			} catch (SQLException e1) {
-				log("Could not deregister driver: `" + driver.toString() + "`");
-				e1.printStackTrace();
+				// No matter what exception occurs, it should not be a show
+				// stopper; we just want to see it in the logs.
+
+				e.printStackTrace();
 			}
 		}
 	}
@@ -168,7 +150,9 @@ public class MusterServlet extends HttpServlet {
 	protected void doGet(HttpServletRequest request,
 			HttpServletResponse response) throws ServletException, IOException {
 
-		reinitializeIfReloadFilesHaveChanged();
+		if (reinitializeIfReloadFilesHaveChanged()) {
+			doGet(request, response);
+		}
 
 		try {
 			checkRequestValidity(request);
@@ -346,7 +330,17 @@ public class MusterServlet extends HttpServlet {
 		return null;
 	}
 
-	private void reinitializeIfReloadFilesHaveChanged() {
+	/**
+	 * Watch the files defined in reloadFilePaths for changes. If they change,
+	 * reinitialize the servlet.
+	 * 
+	 * @param request
+	 *            The Servlet request
+	 * @param response
+	 *            The Servlet response
+	 * @return true if we reinitialized; false if we did not
+	 */
+	private boolean reinitializeIfReloadFilesHaveChanged() {
 
 		long lastLoaded = conf.lastLoaded;
 
@@ -364,8 +358,9 @@ public class MusterServlet extends HttpServlet {
 				log(path + " modified.");
 				log("Reinitializing...");
 				init();
-				return;
+				return true;
 			}
 		}
+		return false;
 	}
 }
