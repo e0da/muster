@@ -51,7 +51,7 @@ public class MusterServlet extends HttpServlet {
 	
 	private static final int cacheTTL = 30 * 60 * 1000; // 30 minutes
 	
-	private static final int cacheMaxLength = 1000;
+	private static final int cacheMaxLength = 128;
 
 	public void init() {
 
