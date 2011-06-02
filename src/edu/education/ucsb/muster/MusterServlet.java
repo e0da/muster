@@ -50,6 +50,10 @@ public class MusterServlet extends HttpServlet {
 	private static LinkedList<String> requiredParameters = new LinkedList<String>();
 
 	private static Justache<String, String> cache;
+	
+	private static final int cacheTTL = 30 * 60 * 1000;
+	
+	private static final int cacheMaxLength = 100;
 
 	public void init() {
 
@@ -73,7 +77,7 @@ public class MusterServlet extends HttpServlet {
 	}
 
 	private Justache<String, String> getJustache() {
-		return new Justache<String, String>(30 * 60 * 1000);
+		return new Justache<String, String>(cacheTTL, cacheMaxLength);
 	}
 
 	private void testDatabaseConnectivity() {
@@ -163,11 +167,6 @@ public class MusterServlet extends HttpServlet {
 			HttpServletResponse response) throws ServletException, IOException {
 
 		reinitializeIfReloadFilesHaveChanged();
-
-		/*
-		 * parse requests from JSON. There can be multiple request objects, each
-		 * with exactly one server and one SQL statement defined
-		 */
 
 		try {
 			checkRequestValidity(request);
