@@ -16,7 +16,6 @@ import java.util.Enumeration;
 import java.util.LinkedList;
 
 import javax.servlet.ServletException;
-import javax.servlet.annotation.WebServlet;
 import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
@@ -25,15 +24,14 @@ import org.apache.commons.lang.StringEscapeUtils;
 
 import com.google.gson.Gson;
 import com.google.gson.stream.JsonReader;
-import com.sidewaysmilk.Justache;
-import com.sidewaysmilk.JustacheKeyNotFoundException;
+import com.sidewaysmilk.justache.Justache;
+import com.sidewaysmilk.justache.JustacheKeyNotFoundException;
 
 import edu.education.ucsb.muster.MusterConfiguration.DatabaseDefinition;
 
 /**
  * Servlet implementation class MusterServlet
  */
-@WebServlet(description = "Respond to GET requests with JSON-formatted data from databases", urlPatterns = { "/muster" })
 public class MusterServlet extends HttpServlet {
 	private static final long serialVersionUID = 1L;
 
@@ -51,9 +49,9 @@ public class MusterServlet extends HttpServlet {
 
 	private static Justache<String, String> cache;
 	
-	private static final int cacheTTL = 30 * 60 * 1000;
+	private static final int cacheTTL = 30 * 60 * 1000; // 30 minutes
 	
-	private static final int cacheMaxLength = 100;
+	private static final int cacheMaxLength = 1000;
 
 	public void init() {
 
@@ -74,6 +72,10 @@ public class MusterServlet extends HttpServlet {
 		requiredParameters.add("callback");
 
 		testDatabaseConnectivity();
+	}
+	
+	public void destroy() {
+		cache.die();
 	}
 
 	private Justache<String, String> getJustache() {
@@ -187,9 +189,6 @@ public class MusterServlet extends HttpServlet {
 		String query = "SELECT " + select + " FROM " + from
 				+ ((where == null) ? "" : " WHERE " + where)
 				+ ((order == null) ? "" : " ORDER BY " + order);
-
-		// Log the query (useful for debugging)
-		log(query);
 
 		// Attempt to retrieve query from cache. If it's expired or not present,
 		// perform the query and cache the result.
