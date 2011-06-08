@@ -1,4 +1,4 @@
-jQuery.noConflict() (function($) {
+jQuery.noConflict(); (function($) {
 
   muster = function(options) {
 
