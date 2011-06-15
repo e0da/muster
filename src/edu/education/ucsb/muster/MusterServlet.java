@@ -12,7 +12,6 @@ import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.ResultSetMetaData;
 import java.sql.SQLException;
-import java.util.Enumeration;
 import java.util.LinkedList;
 
 import javax.servlet.ServletException;
