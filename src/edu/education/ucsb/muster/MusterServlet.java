@@ -149,9 +149,22 @@ public class MusterServlet extends HttpServlet {
 	protected void doGet(HttpServletRequest request,
 			HttpServletResponse response) throws ServletException, IOException {
 
+		
 		if (reinitializeIfReloadFilesHaveChanged()) {
 			doGet(request, response);
 		}
+
+		// Set headers and get writer
+		response.setCharacterEncoding("UTF-8");
+		PrintWriter writer = response.getWriter();
+		response.setContentType("text/javascript");
+
+		// purge the cache if we're asked to (purge_cache URI is called)
+		if (purgeCacheIfRequested(request.getRequestURI())) {
+			writer.println("Cache purged");
+			return;
+		}
+
 
 		try {
 			checkRequestValidity(request);
@@ -200,11 +213,18 @@ public class MusterServlet extends HttpServlet {
 			}
 		}
 
-		// Set headers and write response
-		response.setCharacterEncoding("UTF-8");
-		PrintWriter writer = response.getWriter();
-		response.setContentType("text/javascript");
+		// Write response
 		writer.println(callback + '(' + out + ')');
+
+	}
+
+	private boolean purgeCacheIfRequested(String uri) {
+		if (uri.matches(".*/purge_cache$")) {
+			cache.die();
+			cache = getJustache();
+			return true;
+		}
+		return false;
 	}
 
 	private String getOutputAsJson(String database, String query)

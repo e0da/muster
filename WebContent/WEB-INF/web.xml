@@ -23,4 +23,8 @@
   	<servlet-name>default</servlet-name>
   	<url-pattern>/muster.js</url-pattern>
   </servlet-mapping>
+  <servlet-mapping>
+    <servlet-name>MusterServlet</servlet-name>
+    <url-pattern>/purge_cache</url-pattern>
+  </servlet-mapping>
 </web-app>
