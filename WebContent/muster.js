@@ -9,7 +9,7 @@ jQuery.noConflict(); (function($) {
 
     this.query = function(options) {
       return musterQuery(url, database, options);
-    }
+    };
 
     function musterQuery(url, database, options) {
 
@@ -39,7 +39,7 @@ jQuery.noConflict(); (function($) {
         };
         results.find = function(queries) {
           return musterResultsFind(results, queries);
-        }
+        };
         if (options.callback) {
           options.callback(results);
         }
@@ -51,8 +51,8 @@ jQuery.noConflict(); (function($) {
       return results;
     }
 
-    function musterResultsToTable(results, className) {
-      var className = className ? className : '';
+    function musterResultsToTable(results, cName) {
+      var className = cName ? cName : '';
       var table = $('<table>').addClass('musterTable ' + className);
 
       /* table headers */
@@ -77,5 +77,5 @@ jQuery.noConflict(); (function($) {
       return table;
     }
     return this;
-  }
-})(jQuery)
+  };
+})(jQuery);

@@ -5,6 +5,7 @@ import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.PrintWriter;
 import java.io.UnsupportedEncodingException;
+import java.sql.Array;
 import java.sql.Connection;
 import java.sql.Driver;
 import java.sql.DriverManager;
@@ -34,7 +35,7 @@ import edu.education.ucsb.muster.MusterConfiguration.DatabaseDefinition;
 public class MusterServlet extends HttpServlet {
 	private static final long serialVersionUID = 1L;
 
-	private static final String confPath = "/WEB-INF/muster.conf.js";
+	private static final String confPath = "/WEB-INF/muster.conf.json";
 
 	private static final int cacheTTL = 30 * 60 * 1000; // 30 minutes
 
@@ -71,7 +72,10 @@ public class MusterServlet extends HttpServlet {
 		requiredParameters.add("from");
 		requiredParameters.add("callback");
 
-		testDatabaseConnectivity();
+		// Test connectivity of each database configuration
+		for (DatabaseDefinition db : conf.databases) {
+			testConnectivity(db);
+		}
 	}
 
 	public void destroy() {
@@ -82,43 +86,42 @@ public class MusterServlet extends HttpServlet {
 		return new Justache<String, String>(cacheTTL, cacheMaxLength);
 	}
 
-	private void testDatabaseConnectivity() {
+	private boolean testConnectivity(DatabaseDefinition db) {
 
-		// load drivers
-		for (DatabaseDefinition db : conf.databases) {
+		// load driver
+		try {
+			DriverManager.getDriver(db.url);
+		} catch (SQLException e) {
 			try {
-				DriverManager.getDriver(db.url);
-			} catch (SQLException e) {
-				try {
-					DriverManager.registerDriver((Driver) Class
-							.forName(db.driver).getConstructor()
-							.newInstance((Object[]) null));
-				} catch (Exception e1) {
-					log("A driver couldn't be loaded. Check the config file and try again. driver: `"
-							+ db.driver + "`, confPath: `" + confPath + "`");
-					e1.printStackTrace();
-				}
+				DriverManager.registerDriver((Driver) Class.forName(db.driver)
+						.getConstructor().newInstance((Object[]) null));
+			} catch (Exception e1) {
+				log("A driver couldn't be loaded. Check the config file and try again. driver: `"
+						+ db.driver + "`, confPath: `" + confPath + "`");
+				e1.printStackTrace();
+				return false;
 			}
 		}
 
 		// connect and test setReadOnly
-		for (DatabaseDefinition db : conf.databases) {
 
-			// Add the connection to our list and try setting readOnly to test
-			Connection connection = null;
-			try {
-				connection = DriverManager.getConnection(db.url, db.username,
-						db.password);
-				connection.setReadOnly(true);
-				connection.close();
-			} catch (Exception e) {
+		// Add the connection to our list and try setting readOnly to test
+		Connection connection = null;
+		try {
+			connection = DriverManager.getConnection(db.url, db.username,
+					db.password);
+			connection.setReadOnly(true);
+			connection.close();
+		} catch (Exception e) {
 
-				// No matter what exception occurs, it should not be a show
-				// stopper; we just want to see it in the logs.
+			// No matter what exception occurs, it should not be a show
+			// stopper; we just want to see it in the logs.
 
-				e.printStackTrace();
-			}
+			e.printStackTrace();
+			return false;
 		}
+
+		return true;
 	}
 
 	private MusterConfiguration loadConfiguration() {
@@ -149,9 +152,9 @@ public class MusterServlet extends HttpServlet {
 	protected void doGet(HttpServletRequest request,
 			HttpServletResponse response) throws ServletException, IOException {
 
-		
-		if (reinitializeIfReloadFilesHaveChanged()) {
-			doGet(request, response);
+		if (reloadFilesHaveChanged()) {
+			log("Reinitializing...");
+			init();
 		}
 
 		// Set headers and get writer
@@ -160,11 +163,11 @@ public class MusterServlet extends HttpServlet {
 		response.setContentType("text/javascript");
 
 		// purge the cache if we're asked to (purge_cache URI is called)
-		if (purgeCacheIfRequested(request.getRequestURI())) {
+		if (purgeCacheRequested(request.getRequestURI())) {
+			purgeCache();
 			writer.println("Cache purged");
 			return;
 		}
-
 
 		try {
 			checkRequestValidity(request);
@@ -218,12 +221,14 @@ public class MusterServlet extends HttpServlet {
 
 	}
 
-	private boolean purgeCacheIfRequested(String uri) {
-		if (uri.matches(".*/purge_cache$")) {
-			cache.die();
-			cache = getJustache();
+	private void purgeCache() {
+		cache.die();
+		cache = getJustache();
+	}
+
+	private boolean purgeCacheRequested(String uri) {
+		if (uri.matches(".*/purge_cache$"))
 			return true;
-		}
 		return false;
 	}
 
@@ -268,7 +273,7 @@ public class MusterServlet extends HttpServlet {
 			columns.add(StringEscapeUtils.escapeJavaScript(meta
 					.getColumnName(i)));
 		}
-		out.append("{ \"columns\" : [ ");
+		out.append("{\n  \"columns\" : [ ");
 
 		// Add column names in JSON format
 		for (String column : columns) {
@@ -281,33 +286,43 @@ public class MusterServlet extends HttpServlet {
 		out.append(" ],\n");
 
 		// Add column values
-		out.append("\"results\" : [ ");
+		out.append("  \"results\" : [ \n");
 
 		while (results.next()) {
-
-			out.append("{ ");
-
-			for (String column : columns) {
-				// output "column" : "value". Escape for JavaScript.
-				out.append(String.format("\"%s\": \"%s\", ", column,
-						StringEscapeUtils.escapeJavaScript(results
-								.getString(column))));
-			}
-
-			// remove the trailing ", " and add a line break and close the
-			// object
-			len = out.length();
-			out.delete(len - 2, len);
-			out.append(" },\n");
+			out.append(rowAsJson(results, columns));
 		}
 
 		// remove the trailing ", "
 		len = out.length();
 		out.delete(len - 2, len);
-		out.append("]");
+		out.append("\n  ]\n");
 		out.append("}");
 
 		return out.toString();
+	}
+
+	private String rowAsJson(ResultSet results, LinkedList<String> columns) {
+		StringBuffer out = new StringBuffer("");
+		int len;
+
+		for (String column : columns) {
+			// output "column" : "value". Escape for JavaScript.
+			try {
+				out.append(String.format("      \"%s\": \"%s\",\n", column,
+						StringEscapeUtils.escapeJavaScript(results
+								.getString(column))));
+			} catch (SQLException e) {
+				log("Couldn't get column `" + column + "`");
+				e.printStackTrace();
+			}
+		}
+
+		// remove the trailing ", " and add a line break and close the
+		// object
+		len = out.length();
+		out.delete(len - 2, len);
+
+		return "    {\n" + out + "\n    },\n";
 	}
 
 	private void checkRequestValidity(HttpServletRequest request)
@@ -349,17 +364,7 @@ public class MusterServlet extends HttpServlet {
 		return null;
 	}
 
-	/**
-	 * Watch the files defined in reloadFilePaths for changes. If they change,
-	 * reinitialize the servlet.
-	 * 
-	 * @param request
-	 *            The Servlet request
-	 * @param response
-	 *            The Servlet response
-	 * @return true if we reinitialized; false if we did not
-	 */
-	private boolean reinitializeIfReloadFilesHaveChanged() {
+	private boolean reloadFilesHaveChanged() {
 
 		long lastLoaded = conf.lastLoaded;
 
@@ -375,8 +380,6 @@ public class MusterServlet extends HttpServlet {
 			}
 			if (mtime > lastLoaded) {
 				log(path + " modified.");
-				log("Reinitializing...");
-				init();
 				return true;
 			}
 		}
