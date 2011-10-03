@@ -1,81 +1,118 @@
-jQuery.noConflict(); (function($) {
+(function($) {
 
-  muster = function(options) {
+function Muster() {
 
-    /* TODO handle failed JSON requests */
+  // allow new Musters to be created with or without `new` operator while preserving arguments
+  // http://stackoverflow.com/questions/1606797/use-of-apply-with-new-operator-is-this-possible
+  var newMuster = (function() {
+    function _Muster(args) {
+      return Muster.apply(this, args);
+    }
 
-    var url = options.url;
-    var database = options.database;
+    _Muster.prototype = Muster.prototype;
 
-    this.query = function(options) {
-      return musterQuery(url, database, options);
+    return function(args) {
+      return new _Muster(args);
     };
+  })();
 
-    function musterQuery(url, database, options) {
+  if (!(this instanceof Muster))
+    return newMuster(arguments);
 
-      this.results = {};
+  // unambiguous pointer to this instance of Muster
+  var muster = this;
 
-      /* construct and execute the query */
-
-      /* paramaterized JSONP request URI */
-      var uri = url + '?database=' + escape(database);
-
-      /* parameters which may be passed to Muster servlet */
-      var parameters = ['select', 'from', 'where', 'order'];
-
-      $.each(parameters, function() {
-        if (options[this] != null && options[this].length > 0) {
-          uri += '&' + this + '=' + options[this];
-        }
-      });
-
-      /* append jQuery callback */
-      uri += '&callback=?';
-
-      $.getJSON(uri, function(data) {
-        results = data;
-        results.toTable = function(className) {
-          return musterResultsToTable(results, className);
-        };
-        results.find = function(queries) {
-          return musterResultsFind(results, queries);
-        };
-        if (options.callback) {
-          options.callback(results);
-        }
-        if (options.results) {
-          options.results = results;
-        }
-      });
-
-      return results;
-    }
-
-    function musterResultsToTable(results, cName) {
-      var className = cName ? cName : '';
-      var table = $('<table>').addClass('musterTable ' + className);
-
-      /* table headers */
-      var thead = $('<thead>');
-      table.append(thead);
-      var headersRow = $('<tr>');
-      thead.append(headersRow);
-      $.each(results.columns, function() {
-        headersRow.append('<th>' + this);
-      });
-
-      /* data rows */
-      var tbody = $('<tbody>');
-      table.append(tbody);
-      $.each(results.results, function() {
-        var tr = $('<tr>');
-        tbody.append(tr);
-        $.each(this, function() {
-          tr.append('<td>' + this);
-        });
-      });
-      return table;
-    }
+  // initialize
+  muster.init = function(args) {
+    parseArgs(args);
     return this;
   };
+
+  muster.status = function() {
+    console.log(muster);
+  };
+
+  // perform query. results are loaded into muster.results
+  muster.query = function(query, callback) {
+
+    // prepare the query first (sanitize, encode, etc.)
+    executeQuery(query, callback);
+    return this;
+  };
+
+  muster.filter = function(column, value) {
+    var filtered = $.grep(muster.results, function(n, i) {
+      console.log(n, n[column], value);
+      return n[column] == value;
+    });
+    return filteredCopy(muster, filtered);
+  }
+
+  muster.hasErrors = function() {
+    return muster.errors ? muster.errors.length > 0 : false;
+  };
+
+  return muster.init(arguments);
+
+  // parse arguments, populating options, etc.
+  function parseArgs(args) {
+    // an object full of options
+    if (args.length == 1 && typeof args[0] == 'object') {
+      var options = args[0];
+      muster.url = options.url;
+      muster.database = options.database;
+    }
+  }
+
+  //TODO exceptions
+  function executeQuery(query, callback) {
+    $.getJSON(prepareQuery(query), function(data) {
+      muster.columns = data.columns;
+      muster.results = data.results;
+      callback();
+    });
+  }
+
+  //TODO documentation
+  function prepareQuery(query) {
+
+    var uri = muster.url + '?database=' + escape(muster.database);
+
+    // assemble the parameters
+    $.each([
+      'database', 'select', 'from', 'where', 'order'
+    ], function() {
+      if (query[this] != null && query[this].length > 0) {
+        uri += '&' + this + '=' + escape(query[this]);
+      }
+    });
+
+    uri += '&callback=?'
+
+    return uri;
+  }
+
+  function filteredCopy(oldMuster, results) {
+    var newMuster = new Muster({
+      url: oldMuster.url,
+      database: oldMuster.database
+    });
+
+    newMuster.results = results;
+    newMuster.columns = oldMuster.columns;
+
+    console.log(oldMuster, newMuster);
+    return newMuster;
+  }
+
+  function error(msg) {
+    muster.errors = muster.errors ? muster.errors : [];
+    muster.errors.push(msg);
+  }
+}
+
+// register as static jQuery function
+$.muster = Muster;
+
 })(jQuery);
+
