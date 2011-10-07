@@ -2,8 +2,6 @@
 
 $(function() {
 
-  var n = $.muster();
-
   var m = $.muster({
     url: 'http://localhost:8080/muster/',
       database: 'ggsedb'

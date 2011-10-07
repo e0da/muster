@@ -41,11 +41,12 @@ function Muster() {
   };
 
   muster.filter = function(column, value) {
-    var filtered = $.grep(muster.results, function(n, i) {
-      console.log(n, n[column], value);
+    var filteredResults = $.grep(muster.results, function(n, i) {
       return n[column] == value;
     });
-    return filteredCopy(muster, filtered);
+    var c = clone();
+    c.results = filteredResults;
+    return c;
   }
 
   muster.hasErrors = function() {
@@ -101,13 +102,20 @@ function Muster() {
     newMuster.results = results;
     newMuster.columns = oldMuster.columns;
 
-    console.log(oldMuster, newMuster);
     return newMuster;
   }
 
   function error(msg) {
     muster.errors = muster.errors ? muster.errors : [];
     muster.errors.push(msg);
+  }
+
+  function clone() {
+    var clone = new Muster();
+    for (attr in muster) {
+      clone[attr] = muster[attr];
+    }
+    return clone;
   }
 }
 
