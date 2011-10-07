@@ -1,126 +1,92 @@
-(function($) {
+(function(context, $) {
 
-function Muster() {
-
-  // allow new Musters to be created with or without `new` operator while preserving arguments
-  // http://stackoverflow.com/questions/1606797/use-of-apply-with-new-operator-is-this-possible
-  var newMuster = (function() {
-    function _Muster(args) {
-      return Muster.apply(this, args);
-    }
-
-    _Muster.prototype = Muster.prototype;
-
-    return function(args) {
-      return new _Muster(args);
-    };
-  })();
-
-  if (!(this instanceof Muster))
-    return newMuster(arguments);
-
-  // unambiguous pointer to this instance of Muster
-  var muster = this;
-
-  // initialize
-  muster.init = function(args) {
-    parseArgs(args);
-    return this;
-  };
-
-  muster.status = function() {
-    console.log(muster);
-  };
-
-  // perform query. results are loaded into muster.results
-  muster.query = function(query, callback) {
-
-    // prepare the query first (sanitize, encode, etc.)
-    executeQuery(query, callback);
-    return this;
-  };
-
-  muster.filter = function(column, value) {
-    var filteredResults = $.grep(muster.results, function(n, i) {
-      return n[column] == value;
-    });
-    var c = clone();
-    c.results = filteredResults;
-    return c;
+// constructor
+var Muster = function(args) {
+  if (args) {
+    this.url = args.url;
+    this.database = args.database;
   }
+};
 
-  muster.hasErrors = function() {
-    return muster.errors ? muster.errors.length > 0 : false;
-  };
+// internal use constructor
+var init = function(args) {
+  return new Muster(args);
+};
 
-  return muster.init(arguments);
+// expose Muster to context (i.e. window.Muster)
+context.Muster = init;
 
-  // parse arguments, populating options, etc.
-  function parseArgs(args) {
-    // an object full of options
-    if (args.length == 1 && typeof args[0] == 'object') {
-      var options = args[0];
-      muster.url = options.url;
-      muster.database = options.database;
-    }
-  }
+Muster.prototype = {
 
-  //TODO exceptions
-  function executeQuery(query, callback) {
-    $.getJSON(prepareQuery(query), function(data) {
+  query: function(query, callback) {
+    var muster = this;
+    $.getJSON(getQueryString(this.url, this.database, query), function(data) {
       muster.columns = data.columns;
       muster.results = data.results;
       callback();
     });
-  }
+    return this;
+  },
 
-  //TODO documentation
-  function prepareQuery(query) {
-
-    var uri = muster.url + '?database=' + escape(muster.database);
-
-    // assemble the parameters
-    $.each([
-      'database', 'select', 'from', 'where', 'order'
-    ], function() {
-      if (query[this] != null && query[this].length > 0) {
-        uri += '&' + this + '=' + escape(query[this]);
-      }
+  filter: function(column, value) {
+    var filteredResults = $.grep(this.results, function(row, i) {
+      return row[column] == value;
     });
+    var c = this.clone();
+    c.results = filteredResults;
+    return c;
+  },
 
-    uri += '&callback=?'
-
-    return uri;
-  }
-
-  function filteredCopy(oldMuster, results) {
-    var newMuster = new Muster({
-      url: oldMuster.url,
-      database: oldMuster.database
+  get: function(column) {
+    var ret = [];
+    $.each(this.results, function(k, row) {
+      ret.push(row[column]);
     });
+    return ret;
+  },
 
-    newMuster.results = results;
-    newMuster.columns = oldMuster.columns;
+  getUnique: function(column) {
+    return $.unique(this.get(column));
+  },
 
+  getFirst: function(column) {
+    return this.results[0][column];
+  },
+
+  serializeJoinedResults: function(unique) {
+    var ret = this.clone();
+    //TODO write this
+    return ret;
+  },
+
+  clone: function() {
+    var oldMuster = this;
+    var newMuster = init();
+    for (attr in oldMuster) {
+      newMuster[attr] = oldMuster[attr];
+    }
     return newMuster;
   }
+};
 
-  function error(msg) {
-    muster.errors = muster.errors ? muster.errors : [];
-    muster.errors.push(msg);
-  }
+// Assemble the request URI
+function getQueryString(url, database, params) {
 
-  function clone() {
-    var clone = new Muster();
-    for (attr in muster) {
-      clone[attr] = muster[attr];
+  // String concatenation isn't as efficient as join, but we only do this once
+  // per query and this is more readable than concatenation acrobatics. -jlf
+  var uri = url + '?database=' + escape(database);
+
+  // assemble the parameters
+  $.each([
+         'database', 'select', 'from', 'where', 'order'
+  ], function() {
+    if (params[this] != null && params[this].length > 0) {
+      uri += '&' + this + '=' + escape(params[this]);
     }
-    return clone;
-  }
+  });
+  uri += '&callback=?'
+  return uri;
 }
 
-// register as static jQuery function
-$.muster = Muster;
-
-})(jQuery);
+})(window, jQuery);
 
