@@ -61,8 +61,8 @@ Muster.prototype = {
   groupBy: function(column) {
 
     // ret is an array of arrays. Each array in ret shares the same value for
-    // row[column]. uniq keeps track of whether we've encountered a value
-    // before so we only traverse the results once.
+    //row[column]. uniq keeps track of whether we've encountered a value before
+    //so we only traverse the results once.
     var ret = [],
         uniq = [],
         muster = this;
@@ -80,7 +80,9 @@ Muster.prototype = {
     return ret;
   },
 
-  //TODO comment this and maybe refactor
+  //TODO comment this and maybe refactor. Using .groupBy then iterating over
+  //the list again is not the most efficient technique possible, but, again,
+  //performance vs. readability... It seems pretty fast.
   serializeJoinedResults: function(uniqueColumn) {
     var results = [];
     var m = this; // for use in inner functions
