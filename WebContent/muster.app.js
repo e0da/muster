@@ -8,19 +8,29 @@
 
   var query = {
     select: '*',
+    from: 'profile,research_interests',
+    where: 'research_interests.profile_id = profile.id'
+  };
+
+  var nQuery = {
+    select: '*',
     from: 'profile',
-    where: 'id is not null'
+    where: ''
   };
 
   m.query(query, function() {
     var p = m.filter('first_name', 'Lynn Kern');
     var n = m.filter('last_name', 'Koegel');
     var o = n.filter('first_name', 'Robert');
-    var q = m.filter('first_name', 'John');
-    console.log(q.getFirst('last_name').length);
-    console.log(m.get('first_name').length);
-    console.log(m.getUnique('first_name').length);
-    console.log('m', m, 'n', n, 'o', o, 'p', p, 'q', q);
+    var q = n.filter('first_name', 'John');
+
+    var r = m.serializeJoinedResults('id');
+    console.log(r);
+  })
+  
+  var n = m.clone();
+  n.query(nQuery, function() {
+    console.log(n.results.length);
   });
 
 
