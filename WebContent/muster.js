@@ -124,21 +124,36 @@ Muster.prototype = {
     return clone;
   },
 
-  toTable: function(columns) {
+  toTable: function(columnSpec) {
+
+    var columns, columnLabels;
+
+    if (!columnSpec) {
+      columns = columnLabels = this.columns;
+    }
+    else {
+      columns = [], columnLabels = [];
+      $.each(columnSpec, function(key, column) {
+        columns.push(column[0]);
+        columnLabels.push(column[1]);
+      });
+    }
+
+    console.log(columns, columnLabels);
+
     var table = $('<table><thead><tr></tr></thead><tbody></tbody></table>');
     var thead = table.find('thead tr');
     var tbody = $('<tbody>');
 
-    var muster = this; // local pointer for inner functions
 
-    $.each(muster.columns, function(k, column) {
-      thead.append('<th>' + column);
+    $.each(columnLabels, function(k, columnLabel) {
+      thead.append('<th>' + columnLabel);
     });
 
-    $.each(muster.results, function(k, row) {
+    $.each(this.results, function(k, row) {
       var tr = $('<tr>');
       table.append(tr);
-      $.each(muster.columns, function(k, column) {
+      $.each(columns, function(k, column) {
         var text;
         if (row[column] instanceof Array) {
           text = row[column].join('</li><li>');
