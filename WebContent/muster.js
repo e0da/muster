@@ -24,12 +24,21 @@ Muster.prototype = {
     $.getJSON(getQueryString(this.url, this.database, query), function(data) {
       muster.columns = data.columns;
       muster.results = data.results;
-      callback();
+      callback.apply(muster);
     });
   },
 
   isEmpty: function() {
     return this.results.length < 1;
+  },
+
+  clone: function() {
+    var oldMuster = this;
+    var newMuster = init();
+    for (attr in oldMuster) {
+      newMuster[attr] = oldMuster[attr];
+    }
+    return newMuster;
   },
 
   filter: function(column, value) {
@@ -115,44 +124,66 @@ Muster.prototype = {
     return clone;
   },
 
-  clone: function() {
-    var oldMuster = this;
-    var newMuster = init();
-    for (attr in oldMuster) {
-      newMuster[attr] = oldMuster[attr];
-    }
-    return newMuster;
+  toTable: function(columns) {
+    var table = $('<table><thead><tr></tr></thead><tbody></tbody></table>');
+    var thead = table.find('thead tr');
+    var tbody = $('<tbody>');
+
+    var muster = this; // local pointer for inner functions
+
+    $.each(muster.columns, function(k, column) {
+      thead.append('<th>' + column);
+    });
+
+    $.each(muster.results, function(k, row) {
+      var tr = $('<tr>');
+      table.append(tr);
+      $.each(muster.columns, function(k, column) {
+        var text;
+        if (row[column] instanceof Array) {
+          text = row[column].join('</li><li>');
+          text = '<ul><li>' + text + '</li></ul>';
+        }
+        else text = row[column];
+          tr.append('<td>' + text);
+      });
+    });
+    return table;
   }
 };
 
 // Assemble the request URI
 function getQueryString(url, database, params) {
 
-  // String concatenation isn't as efficient as join, but we only do this once
-  // per query and this is more readable than concatenation acrobatics. -jlf
-  var uri = url + '?database=' + escape(database);
+  // Add database to parameters
+  params['database'] = database;
 
   // assemble the parameters
+  var parameterPairs = [];
   $.each([
          'database', 'select', 'from', 'where', 'order'
   ], function() {
     if (params[this] != null && params[this].length > 0) {
-      uri += '&' + this + '=' + escape(params[this]);
+      parameterPairs.push( [this, escape(params[this])].join('=') );
     }
   });
-  uri += '&callback=?'
-  return uri;
+  parameterPairs.push('callback=?'); // jQuery JSONP support
+
+  return [url, '?', parameterPairs.join('&')].join('');
 }
 
-if (!Array.indexOf) {
-  Array.prototype.indexOf = function(obj) {
-    for (var i = 0, len = this.length; i < len; i++) {
-      if (this[i] == obj)
-        return i;
-    }
-    return -1;
-  };
-}
+// Add Array.indexOf to browsers that don't have it (i.e. IE)
+(function() {
+  if (!Array.indexOf) {
+    Array.prototype.indexOf = function(obj) {
+      for (var i = 0, len = this.length; i < len; i++) {
+        if (this[i] == obj)
+          return i;
+      }
+      return -1;
+    };
+  }
+})();
 
 })(window, jQuery);
 
