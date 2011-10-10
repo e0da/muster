@@ -139,12 +139,9 @@ Muster.prototype = {
       });
     }
 
-    console.log(columns, columnLabels);
-
     var table = $('<table><thead><tr></tr></thead><tbody></tbody></table>');
     var thead = table.find('thead tr');
     var tbody = $('<tbody>');
-
 
     $.each(columnLabels, function(k, columnLabel) {
       thead.append('<th>' + columnLabel);
@@ -155,12 +152,21 @@ Muster.prototype = {
       table.append(tr);
       $.each(columns, function(k, column) {
         var text;
-        if (row[column] instanceof Array) {
+
+        // formatting function
+        if (typeof column == 'function') {
+          text = column.apply(row);
+        }
+        // multiple values
+        else if (row[column] instanceof Array) {
           text = row[column].join('</li><li>');
           text = '<ul><li>' + text + '</li></ul>';
         }
-        else text = row[column];
-          tr.append('<td>' + text);
+        // just a string
+        else {
+          text = row[column];
+        }
+        tr.append('<td>' + text);
       });
     });
     return table;

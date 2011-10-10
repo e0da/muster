@@ -1,8 +1,22 @@
 <!DOCTYPE html>
 <title>Muster</title>
 <style>
+  body {
+    font-family: sans-serif;
+    font-size: 0.8em;
+  }
   pre {
     white-space: pre-wrap;
+  }
+  th, tbody tr td:nth-child(1) {
+    white-space: pre;
+  }
+  td, th {
+    vertical-align: top;
+    padding: 5px;
+  }
+  tr:nth-child(odd) {
+    background: #ddd;
   }
 </style>
 <script src=http://ajax.googleapis.com/ajax/libs/jquery/1.6.4/jquery.min.js></script>
