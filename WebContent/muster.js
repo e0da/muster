@@ -169,7 +169,7 @@ Muster.prototype = {
         tr.append('<td>' + text);
       });
     });
-    return table;
+    return sortablize(table);
   }
 };
 
@@ -191,6 +191,27 @@ function getQueryString(url, database, params) {
   parameterPairs.push('callback=?'); // jQuery JSONP support
 
   return [url, '?', parameterPairs.join('&')].join('');
+}
+
+// return a sortable version of the table
+function sortablize(table) {
+  table.find('th').css({cursor: 'pointer'}).click(function(event) {
+    var th = $(event.target);
+    var table = th.closest('table');
+    var tbody = table.find('tbody');
+    var index = th.index() + 1;
+    var rows = table.find('tbody tr');
+    tbody.append(rows.sort(function(left, right) {
+
+      left  =  $(left).find('td:nth-child(' + index + ')').text().toLowerCase();
+      right = $(right).find('td:nth-child(' + index + ')').text().toLowerCase();
+
+      if      (left < right)  return -1;
+      else if (left == right) return 0;
+      else                    return 1;
+    }));
+  });
+  return table;
 }
 
 // Add Array.indexOf to browsers that don't have it (i.e. IE)
