@@ -19,7 +19,7 @@
 function doTable(muster) {
   $(function() {
     var table = $('<table>');
-    var thead = $('<thead>');
+    var thead = $('<thead><tr>').find('tr');
     var tbody = $('<tbody>');
     table.append(thead).append(tbody);
     $('body').append(table);

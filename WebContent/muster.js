@@ -8,7 +8,8 @@ var Muster = function(args) {
   }
 };
 
-// Constructor wrapper (always return an object; never a function. `new` keyword is optional.)
+// Constructor wrapper (always return an object; never a function. `new`
+// keyword is optional.)
 var init = function(args) {
   return new Muster(args);
 };
@@ -141,6 +142,16 @@ function getQueryString(url, database, params) {
   });
   uri += '&callback=?'
   return uri;
+}
+
+if (!Array.indexOf) {
+  Array.prototype.indexOf = function(obj) {
+    for (var i = 0, len = this.length; i < len; i++) {
+      if (this[i] == obj)
+        return i;
+    }
+    return -1;
+  };
 }
 
 })(window, jQuery);
