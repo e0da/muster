@@ -193,7 +193,7 @@ function getQueryString(url, database, params) {
   return [url, '?', parameterPairs.join('&')].join('');
 }
 
-// return a sortable version of the table
+// return a stable sortable version of the table
 function sortablize(table) {
   table.find('th').css({cursor: 'pointer'}).click(function(event) {
     var th = $(event.target);
@@ -201,7 +201,7 @@ function sortablize(table) {
     var tbody = table.find('tbody');
     var index = th.index() + 1;
     var rows = table.find('tbody tr');
-    tbody.append(rows.sort(function(left, right) {
+    tbody.append(rows.msort(function(left, right) {
 
       left  =  $(left).find('td:nth-child(' + index + ')').text().toLowerCase();
       right = $(right).find('td:nth-child(' + index + ')').text().toLowerCase();
@@ -224,6 +224,61 @@ function sortablize(table) {
       }
       return -1;
     };
+  }
+})();
+
+// Add stable merge sort to Array and jQuery prototypes
+(function() {
+
+  Array.prototype.msort = jQuery.fn.msort = msort;
+
+  function msort(compare) {
+
+    var length = this.length,
+        middle = Math.floor(length / 2);
+
+    if (!compare) {
+      compare = function() {
+        return arguments[0] - arguments[1];
+      };
+    }
+
+    if (length < 2) {
+      return this;
+    }
+
+    return merge(
+      this.slice(0, middle).msort(compare),
+      this.slice(middle, length).msort(compare),
+      compare
+    );
+  }
+
+  function merge(left, right, compare) {
+
+    var result = [];
+
+    while (left.length > 0 || right.length > 0) {
+      if (left.length > 0 && right.length > 0) {
+        if (compare(left[0], right[0]) <= 0) {
+          result.push(left[0]);
+          left = left.slice(1);
+        }
+        else {
+          result.push(right[0]);
+          right = right.slice(1);
+        }
+      }
+      else if (left.length > 0) {
+        result.push(left[0]);
+        left = left.slice(1);
+      }
+      else if (right.length > 0) {
+        result.push(right[0]);
+        right = right.slice(1);
+      }
+    }
+    return result;
   }
 })();
 
