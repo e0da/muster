@@ -238,8 +238,13 @@ function sortablize(table) {
         middle = Math.floor(length / 2);
 
     if (!compare) {
-      compare = function() {
-        return arguments[0] - arguments[1];
+      compare = function(left, right) {
+        if (left < right) 
+          return -1;
+        if (left == right)
+          return 0;
+        else
+          return 1;
       };
     }
 
