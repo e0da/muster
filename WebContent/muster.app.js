@@ -1,5 +1,35 @@
 (function($) {
 
+  // ITGDD demo
+  Muster({
+    url: 'http://harold:8080/muster/',
+    database: 'itg'
+  }).query({
+    select: '*',
+    from: 'devices',
+    where: "Status <> 'EIMR' or Status is null",
+    order: 'Status asc'
+  }, function() {
+    var table = this.toTable([
+      ['Property ID','ITG ID'],
+      ['Host Name','hostname'],
+      ['Status', 'Status'],
+      ['Platform', 'platform'],
+      ['Model', 'model'],
+      ['Serial Number', 'serial no.'],
+      ['OS', 'OS'],
+      ['CPU', 'CPU'],
+      ['RAM', 'RAM'],
+      ['Room', 'Room'],
+      ['GSE Group', 'Group'],
+      ['Notes', 'Notes']
+    ]);
+    $(function() {
+      $('body').append(table);
+    });
+  });
+
+  // Research Interests demo
   Muster({
     url: 'http://harold:8080/muster/',
     database: 'ggsedb'
