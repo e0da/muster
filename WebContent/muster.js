@@ -103,11 +103,9 @@ Muster.prototype = {
     return newMuster;
   },
 
-  filter: function() {
+  filter: function(column, value) {
 
-    var column = arguments[0],
-        value = arguments[1],
-        clone = this.clone();
+    var clone = this.clone();
 
     clone.results = $.grep(this.results, function(row) {
       return row[column] === value;
