@@ -1,27 +1,84 @@
-(function(context, $) {
+var jQuery;(function(context, $) { // closure declaration; var jQuery for JSLint
 
-// constructor
-var Muster = function(args) {
+'use strict'; // strict ECMAScript interpretation
+
+///////////////////////////////////////////////////////////////////////////////
+// Constructors and utility functions. Utility functions are specifically meant
+// NOT to be methods of the Muster object.
+///////////////////////////////////////////////////////////////////////////////
+
+
+// Constructor
+function Muster(args) {
   if (args) {
     this.url = args.url;
     this.database = args.database;
   }
-};
+}
 
-// Constructor wrapper (always return an object; never a function. `new`
-// keyword is optional.)
-var init = function(args) {
+// Constructor wrapper.
+// Whether called as a function or a constructor, it always returns an instance
+// of Muster, i.e. `Muster` and `new Muster()` are equivalent.
+function init(args) {
   return new Muster(args);
-};
+}
 
-// expose Muster to context (i.e. window.Muster)
+// Assemble the request URI
+function getRequestUri(url, database, params) {
+
+  // Add database to parameters
+  params.database = database;
+
+  // assemble the parameters
+  var parameterPairs = [];
+  $.each([
+         'database', 'select', 'from', 'where', 'order'
+  ], function() {
+    if (params[this] !== null && params[this].length > 0) {
+      parameterPairs.push( [this, window.escape(params[this])].join('=') );
+    }
+  });
+  parameterPairs.push('callback=?'); // jQuery JSONP support
+
+  return [url, '?', parameterPairs.join('&')].join('');
+}
+
+// Return a copy of the table which supports stable sorting when the table's
+// column headings are clicked.
+function getSortableTable(table) {
+  table.find('th').css({cursor: 'pointer'}).click(function(event) {
+
+    var th = $(event.target),
+        table = th.closest('table'),
+        tbody = table.find('tbody'),
+        index = th.index() + 1,
+        rows = table.find('tbody tr');
+
+    tbody.append(rows.msort(function(left, right) {
+
+      left  =  $(left).find('td:nth-child(' + index + ')').text().toLowerCase();
+      right = $(right).find('td:nth-child(' + index + ')').text().toLowerCase();
+
+      if      (left < right)   { return -1; }
+      else if (left === right) { return 0;  }
+      else                     { return 1;  }
+    }));
+  });
+  return table;
+}
+
+// expose Muster constructor as method of context (i.e. window.Muster)
 context.Muster = init;
 
+///////////////////////////////////////////////////////////////////////////////
+// Muster's prototype
+// All public methods are defined here.
+///////////////////////////////////////////////////////////////////////////////
 Muster.prototype = {
 
   query: function(query, callback) {
     var muster = this;
-    $.getJSON(getQueryString(this.url, this.database, query), function(data) {
+    $.getJSON(getRequestUri(this.url, this.database, query), function(data) {
       muster.columns = data.columns;
       muster.results = data.results;
       callback.apply(muster);
@@ -33,29 +90,36 @@ Muster.prototype = {
   },
 
   clone: function() {
-    var oldMuster = this;
-    var newMuster = init();
-    for (attr in oldMuster) {
-      newMuster[attr] = oldMuster[attr];
+
+    var oldMuster = this,
+        newMuster = init(),
+        property;
+
+    for (property in oldMuster) {
+      if (oldMuster.hasOwnProperty(property)) {
+        newMuster[property] = oldMuster[property];
+      }
     }
     return newMuster;
   },
 
-  filter: function(column, value) {
-    var column = arguments[0];
-    var value = arguments[1];
-    var filteredResults = $.grep(this.results, function(row, i) {
-      return row[column] == value;
+  filter: function() {
+
+    var column = arguments[0],
+        value = arguments[1],
+        clone = this.clone();
+
+    clone.results = $.grep(this.results, function(row) {
+      return row[column] === value;
     });
-    var clone = this.clone();
-    clone.results = filteredResults;
+
     return clone;
   },
 
   get: function(column) {
     var ret = [];
-    $.each(this.results, function(k, row) {
-      ret.push(row[column]);
+    $.each(this.results, function() {
+      ret.push(this[column]);
     });
     return ret;
   },
@@ -77,15 +141,15 @@ Muster.prototype = {
         uniq = [],
         muster = this;
 
-    $.each(this.results, function(k, row) {
-      var i = uniq.indexOf(row[column]);
+    $.each(this.results, function() {
+      var i = uniq.indexOf(this[column]);
       if (i < 0) {
-        uniq.push(row[column]);
+        uniq.push(this[column]);
         i = uniq.length - 1;
         ret[i] = muster.clone();
         ret[i].results = [];
       }
-      ret[i].results.push(row);
+      ret[i].results.push(this);
     });
     return ret;
   },
@@ -94,162 +158,158 @@ Muster.prototype = {
   // the list again is not the most efficient technique possible, but, again,
   // performance vs. readability... It seems pretty fast.
   serializeJoinedResults: function(uniqueColumn) {
-    var results = [];
-    var m = this; // for use in inner functions
-    var grouped = m.groupBy(uniqueColumn);
-    var columns = grouped[0].columns;
+
+    var grouped = this.groupBy(uniqueColumn),
+        columns = grouped[0].columns,
+        clone = this.clone();
+
+    clone.results = [];
+
     columns.splice(grouped[0].columns.indexOf(uniqueColumn), 1);
-    $.each(grouped, function(k, group) {
+    $.each(grouped, function() {
       var mergedRow = {};
-      $.each(group.results, function(k, row) {
-        $.each(columns, function(k, column) {
-          if (mergedRow[column] == undefined) {
-            mergedRow[column] = row[column];
+      $.each(this.results, function() {
+        var row = this;
+        $.each(columns, function() {
+          if (mergedRow[this] === undefined) {
+            mergedRow[this] = row[this];
           }
-          else if (typeof mergedRow[column] == 'string') {
-            if (mergedRow[column] != row[column]) {
-              var val = mergedRow[column];
-              mergedRow[column] = [row[column]];
+          else if (typeof mergedRow[this] === 'string') {
+            if (mergedRow[this] !== row[this]) {
+              mergedRow[this] = [row[this]];
             }
           }
           else {
-            mergedRow[column].push(row[column]);
+            mergedRow[this].push(row[this]);
           }
         });
       });
-      results.push(mergedRow);
+      clone.results.push(mergedRow);
     });
-    var clone = this.clone();
-    clone.results = results;
+
     return clone;
   },
 
   toTable: function(columnSpec) {
 
-    var columns, columnLabels;
+    var columns,
+        columnLabels,
+        table = $('<table><thead><tr></tr></thead><tbody></tbody></table>'),
+        thead = table.find('thead tr'),
+        tbody = table.find('tbody');
 
     if (!columnSpec) {
       columns = columnLabels = this.columns;
     }
     else {
-      columns = [], columnLabels = [];
-      $.each(columnSpec, function(key, column) {
-        columns.push(column[0]);
-        columnLabels.push(column[1]);
+      columns = [];
+      columnLabels = [];
+      $.each(columnSpec, function() {
+        columns.push(this[0]);
+        columnLabels.push(this[1]);
       });
     }
 
-    var table = $('<table><thead><tr></tr></thead><tbody></tbody></table>');
-    var thead = table.find('thead tr');
-    var tbody = $('<tbody>');
-
-    $.each(columnLabels, function(k, columnLabel) {
-      thead.append('<th>' + columnLabel);
+    $.each(columnLabels, function() {
+      thead.append('<th>' + this);
     });
 
-    $.each(this.results, function(k, row) {
-      var tr = $('<tr>');
-      table.append(tr);
-      $.each(columns, function(k, column) {
+    $.each(this.results, function() {
+
+      var row = this,
+          tr = $('<tr>');
+
+      tbody.append(tr);
+      $.each(columns, function() {
         var text;
 
         // formatting function
-        if (typeof column == 'function') {
-          text = column.apply(row);
+        if (typeof this === 'function') {
+          text = this.apply(row);
         }
         // multiple values
-        else if (row[column] instanceof Array) {
-          text = row[column].join('</li><li>');
+        else if (row[this] instanceof Array) {
+          text = row[this].join('</li><li>');
           text = '<ul><li>' + text + '</li></ul>';
         }
         // just a string
         else {
-          text = row[column];
+          text = row[this];
         }
         tr.append('<td>' + text);
       });
     });
-    return sortablize(table);
+    return getSortableTable(table);
   }
 };
-
-// Assemble the request URI
-function getQueryString(url, database, params) {
-
-  // Add database to parameters
-  params['database'] = database;
-
-  // assemble the parameters
-  var parameterPairs = [];
-  $.each([
-         'database', 'select', 'from', 'where', 'order'
-  ], function() {
-    if (params[this] != null && params[this].length > 0) {
-      parameterPairs.push( [this, escape(params[this])].join('=') );
-    }
-  });
-  parameterPairs.push('callback=?'); // jQuery JSONP support
-
-  return [url, '?', parameterPairs.join('&')].join('');
-}
-
-// return a stable sortable version of the table
-function sortablize(table) {
-  table.find('th').css({cursor: 'pointer'}).click(function(event) {
-    var th = $(event.target);
-    var table = th.closest('table');
-    var tbody = table.find('tbody');
-    var index = th.index() + 1;
-    var rows = table.find('tbody tr');
-    tbody.append(rows.msort(function(left, right) {
-
-      left  =  $(left).find('td:nth-child(' + index + ')').text().toLowerCase();
-      right = $(right).find('td:nth-child(' + index + ')').text().toLowerCase();
-
-      if      (left < right)  return -1;
-      else if (left == right) return 0;
-      else                    return 1;
-    }));
-  });
-  return table;
-}
 
 // Add Array.indexOf to browsers that don't have it (i.e. IE)
 (function() {
   if (!Array.indexOf) {
     Array.prototype.indexOf = function(obj) {
-      for (var i = 0, len = this.length; i < len; i++) {
-        if (this[i] == obj)
+      var i, len;
+      for (i = 0, len = this.length; i < len; i += 1) {
+        if (this[i] === obj) {
           return i;
+        }
       }
       return -1;
     };
   }
-})();
+}());
 
 // Add stable merge sort to Array and jQuery prototypes
-(function() {
+var MergeSort = function() {};
+MergeSort.prototype = {
 
-  Array.prototype.msort = jQuery.fn.msort = msort;
-
-  function msort(compare) {
+  msort: function(compare) {
 
     var length = this.length,
         middle = Math.floor(length / 2);
 
     if (!compare) {
       compare = function(left, right) {
-        if (left < right) 
+        if (left < right) {
           return -1;
-        if (left == right)
+        }
+        if (left === right) {
           return 0;
-        else
+        }
+        else {
           return 1;
+        }
       };
     }
 
     if (length < 2) {
       return this;
+    }
+
+    function merge(left, right, compare) {
+
+      var result = [];
+
+      while (left.length > 0 || right.length > 0) {
+        if (left.length > 0 && right.length > 0) {
+          if (compare(left[0], right[0]) <= 0) {
+            result.push(left[0]);
+            left = left.slice(1);
+          }
+          else {
+            result.push(right[0]);
+            right = right.slice(1);
+          }
+        }
+        else if (left.length > 0) {
+          result.push(left[0]);
+          left = left.slice(1);
+        }
+        else if (right.length > 0) {
+          result.push(right[0]);
+          right = right.slice(1);
+        }
+      }
+      return result;
     }
 
     return merge(
@@ -258,34 +318,10 @@ function sortablize(table) {
       compare
     );
   }
+};
+Array.prototype.msort = jQuery.fn.msort = MergeSort.prototype.msort;
 
-  function merge(left, right, compare) {
+}(window, jQuery)); //closure and invocation
 
-    var result = [];
-
-    while (left.length > 0 || right.length > 0) {
-      if (left.length > 0 && right.length > 0) {
-        if (compare(left[0], right[0]) <= 0) {
-          result.push(left[0]);
-          left = left.slice(1);
-        }
-        else {
-          result.push(right[0]);
-          right = right.slice(1);
-        }
-      }
-      else if (left.length > 0) {
-        result.push(left[0]);
-        left = left.slice(1);
-      }
-      else if (right.length > 0) {
-        result.push(right[0]);
-        right = right.slice(1);
-      }
-    }
-    return result;
-  }
-})();
-
-})(window, jQuery);
+/*jslint browser: true, white: true*/
 

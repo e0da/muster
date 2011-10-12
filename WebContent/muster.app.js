@@ -1,7 +1,9 @@
 (function($) {
 
+  'use strict';
+
   // ITGDD demo
-  Muster({
+  new Muster({
     url: 'http://harold:8080/muster/',
     database: 'itg'
   }).query({
@@ -30,7 +32,7 @@
   });
 
   // Research Interests demo
-  Muster({
+  new Muster({
     url: 'http://harold:8080/muster/',
     database: 'ggsedb'
   }).query({
@@ -49,4 +51,5 @@
     });
   });
 
-})(jQuery);
+}(jQuery));
+
