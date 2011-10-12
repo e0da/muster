@@ -1,9 +1,9 @@
-(function($) {
+var muster;(function($) {
 
   'use strict';
 
   // ITGDD demo
-  new Muster({
+  muster({
     url: 'http://harold:8080/muster/',
     database: 'itg'
   }).query({
@@ -32,7 +32,7 @@
   });
 
   // Research Interests demo
-  new Muster({
+  muster({
     url: 'http://harold:8080/muster/',
     database: 'ggsedb'
   }).query({
@@ -52,4 +52,6 @@
   });
 
 }(jQuery));
+
+/*jslint browser: true, white: true*/
 

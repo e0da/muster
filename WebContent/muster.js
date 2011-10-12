@@ -19,7 +19,7 @@ function Muster(args) {
 // Constructor wrapper.
 // Whether called as a function or a constructor, it always returns an instance
 // of Muster, i.e. `Muster` and `new Muster()` are equivalent.
-function init(args) {
+function constructorWrapper(args) {
   return new Muster(args);
 }
 
@@ -67,8 +67,10 @@ function getSortableTable(table) {
   return table;
 }
 
-// expose Muster constructor as method of context (i.e. window.Muster)
-context.Muster = init;
+// expose Muster constructor as method of context (i.e. window.Muster). It's
+// not capitalized because it's a method that returns an instance of Muster.
+// The Muster constructor should never be called directly.
+context.muster = constructorWrapper;
 
 ///////////////////////////////////////////////////////////////////////////////
 // Muster's prototype
@@ -92,7 +94,7 @@ Muster.prototype = {
   clone: function() {
 
     var oldMuster = this,
-        newMuster = init(),
+        newMuster = constructorWrapper(),
         property;
 
     for (property in oldMuster) {
