@@ -48,28 +48,47 @@ function getRequestUri(url, database, params) {
 function getSortableTable(table) {
   table.find('th').css({cursor: 'pointer'}).click(function(event) {
 
-    var th = $(event.target),
-        table = th.closest('table'),
-        tbody = table.find('tbody'),
-        index = th.index() + 1,
-        rows = table.find('tbody tr');
+    var th      = $(event.target),        // the heading that was clicked
+        table   = th.closest('table'),
+        tbody   = table.find('tbody'),
+        index   = th.index() + 1,         // the numerical position of the clicked heading
+        rows    = table.find('tbody tr'),
+        sorted  = th.hasClass('sorted'),  // is the column already sorted?
+        rsorted = th.hasClass('rsorted'), // is the column already reverse sorted?
+        sortedRows;
 
-    tbody.append(rows.msort(function(left, right) {
+    // Remove sort statuses from all other headings
+    th.siblings().removeClass('sorted').removeClass('rsorted');
 
-      left  =  $(left).find('td:nth-child(' + index + ')').text().toLowerCase();
-      right = $(right).find('td:nth-child(' + index + ')').text().toLowerCase();
+    // If it's already sorted, the quickest solution is to just reverse it.
+    // Otherwise, do a stable merge sort of the unsorted column and mark it as sorted.
+    if (sorted || rsorted) {
+      th.toggleClass('sorted').toggleClass('rsorted');
+      sortedRows = Array.prototype.reverse.apply(rows);
+    }
+    else {
+      sortedRows = rows.msort(function(left, right) {
 
-      if      (left < right)   { return -1; }
-      else if (left === right) { return 0;  }
-      else                     { return 1;  }
-    }));
+        // compare the text of each cell, case insensitive
+        left  =  $(left).find('td:nth-child(' + index + ')').text().toLowerCase();
+        right = $(right).find('td:nth-child(' + index + ')').text().toLowerCase();
+
+        if      (left  <  right) { return -1; }
+        else if (left === right) { return  0; }
+        else                     { return  1; }
+      });
+
+      th.toggleClass('sorted');
+    }
+
+    tbody.append(sortedRows);
   });
   return table;
 }
 
-// expose Muster constructor as method of context (i.e. window.Muster). It's
-// not capitalized because it's a method that returns an instance of Muster.
-// The Muster constructor should never be called directly.
+// Expose Muster constructor as method of 'context' (i.e. window.Muster). It's
+// not capitalized because it's a method of 'context' that returns an instance
+// of Muster. The Muster constructor should never be called directly.
 context.muster = constructorWrapper;
 
 ///////////////////////////////////////////////////////////////////////////////
