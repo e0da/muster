@@ -12,7 +12,7 @@ var muster;(function($) {
     where: "Status <> 'EIMR' or Status is null",
     order: 'Status asc'
   }, function() {
-    var table = this.toTable([
+    this.toTable([
       ['Property ID','ITG ID'],
       ['Host Name','hostname'],
       'Status',
@@ -25,10 +25,7 @@ var muster;(function($) {
       'Room',
       ['GSE Group', 'Group'],
       'Notes'
-    ]);
-    $(function() {
-      $('body').append(table);
-    });
+    ], '#itgdd');
   });
 
   // Research Interests demo
@@ -41,14 +38,14 @@ var muster;(function($) {
     where: 'research_interests.profile_id = profile.id and active = \'yes\'',
     order: 'last_name asc'
   }, function() {
+
     var table = this.serializeJoinedResults('id').toTable([
       [function() { return this.last_name + ', ' + this.first_name; }, 'Full Name'],
       ['title', 'Title'],
       ['interest', 'Research Interests']
     ]);
-    $(function() {
-      $('body').append(table);
-    });
+
+    $($('#researchInterests').append(table));
   });
 
 }(jQuery));

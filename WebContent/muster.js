@@ -220,7 +220,7 @@ Muster.prototype = {
     return clone;
   },
 
-  toTable: function(columnSpec) {
+  toTable: function(columnSpec, parent) {
 
     var columns,
         columnLabels,
@@ -275,6 +275,11 @@ Muster.prototype = {
         tr.append('<td>' + text);
       });
     });
+
+    if (parent) {
+      $($(parent).html(table));
+    }
+
     return getSortableTable(table);
   }
 };
