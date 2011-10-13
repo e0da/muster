@@ -45,6 +45,17 @@ function getRequestUri(url, database, params) {
 
 // Return a copy of the table which supports stable sorting when the table's
 // column headings are clicked.
+//
+// N.B. If table contents are modified after the table is sorted, sorting and
+//      reverse sorting by clicking the same heading multiple times WILL NOT
+//      correctly sort based on the new content. Sorting again by the same
+//      column just reverses the rows. This has the dual benefits of being
+//      efficient and maintaining a stable sort. If, in the future, Muster
+//      needs to handle sorting a table after data has been modified
+//      dynamically, all of the headings should be stripped of their 'sort' and
+//      'rsort' classes (i.e.  th.removeClass('sorted').removeClass('rsorted'))
+//      BEFORE sorting is performed to ensure a new sort is performed and that
+//      the order isn't simply reversed.
 function getSortableTable(table) {
   table.find('th').css({cursor: 'pointer'}).click(function(event) {
 
