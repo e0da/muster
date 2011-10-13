@@ -235,8 +235,14 @@ Muster.prototype = {
       columns = [];
       columnLabels = [];
       $.each(columnSpec, function() {
-        columns.push(this[0]);
-        columnLabels.push(this[1]);
+        if (this instanceof Array) {
+          columns.push(this[0]);
+          columnLabels.push(this[1]);
+        }
+        else if (typeof this === 'string') {
+          columns.push(this);
+          columnLabels.push(this);
+        }
       });
     }
 

@@ -15,16 +15,16 @@ var muster;(function($) {
     var table = this.toTable([
       ['Property ID','ITG ID'],
       ['Host Name','hostname'],
-      ['Status', 'Status'],
+      'Status',
       ['Platform', 'platform'],
       ['Model', 'model'],
       ['Serial Number', 'serial no.'],
-      ['OS', 'OS'],
-      ['CPU', 'CPU'],
-      ['RAM', 'RAM'],
-      ['Room', 'Room'],
+      'OS',
+      'CPU',
+      'RAM',
+      'Room',
       ['GSE Group', 'Group'],
-      ['Notes', 'Notes']
+      'Notes'
     ]);
     $(function() {
       $('body').append(table);
