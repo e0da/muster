@@ -278,6 +278,12 @@ Muster.prototype = {
 }());
 
 // Add stable merge sort to Array and jQuery prototypes
+// 
+// N.B. It may seem unnecessary to define this with a constructor and a
+//      prototype, but for compliance and clarity with 'use strict', we should.
+//      With 'use strict', `this` will NOT default to pointing to the base
+//      object (window), so we explicitly say that it's a pointer to its
+//      function's parent object by defining a constructor and prototype.
 var MergeSort = function() {};
 MergeSort.prototype = {
 
