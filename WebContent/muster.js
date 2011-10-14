@@ -195,7 +195,7 @@ Muster.prototype = {
 
     clone.results = [];
 
-    columns.splice(grouped[0].columns.indexOf(uniqueColumn), 1);
+    columns.slice(grouped[0].columns.indexOf(uniqueColumn), 1);
     $.each(grouped, function() {
       var mergedRow = {};
       $.each(this.results, function() {
