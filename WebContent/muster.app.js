@@ -1,4 +1,4 @@
-var muster;(function($) {
+(function($) {
 
   'use strict';
 
@@ -50,5 +50,6 @@ var muster;(function($) {
 
 }(jQuery));
 
-/*jslint browser: true, white: true*/
+/*jslint browser: true, indent: 2 */
+/*global muster, jQuery */
 
