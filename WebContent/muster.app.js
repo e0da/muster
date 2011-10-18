@@ -3,10 +3,7 @@
   'use strict';
 
   // ITGDD demo
-  muster({
-    url: 'http://harold:8080/muster/',
-    database: 'itg'
-  }).query({
+  muster('itg').query({
     select: '*',
     from: 'devices',
     where: "Status <> 'EIMR' or Status is null",
@@ -42,7 +39,14 @@
     var table = this.serializeJoinedResults('id').toTable([
       [function() { return this.last_name + ', ' + this.first_name; }, 'Full Name'],
       ['title', 'Title'],
-      ['interest', 'Research Interests']
+      ['interest', 'Research Interests (list)'],
+      [function() {
+        if (this.interest instanceof Array) {
+          return this.interest.join(', ');
+        } else {
+          return this.interest;
+        }
+      }, 'Research Interests (comma separated)']
     ]);
 
     $($('#researchInterests').append(table));

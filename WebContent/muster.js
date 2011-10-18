@@ -14,25 +14,21 @@
   'use strict'; // strict ECMAScript interpretation
 
 
-  ///////////////////////////////////////////////////////////////////////////////
-  // Constants
-  ///////////////////////////////////////////////////////////////////////////////
+  var MergeSort, // object to privide merge sort for Array and jQuery
 
-  var POSSIBLE_PARAMETERS = [ 'database', 'select', 'from', 'where', 'order' ],
+    // Constants
+    POSSIBLE_PARAMETERS = [ 'database', 'select', 'from', 'where', 'order' ],
+    DEFAULT_URL = 'https://apps.education.ucsb.edu/muster/';
 
-
-
-  ///////////////////////////////////////////////////////////////////////////////
-  // Merge Sort
-  ///////////////////////////////////////////////////////////////////////////////
-  // Add stable merge sort to Array and jQuery prototypes
-  // 
-  // N.B. It may seem unnecessary to define this with a constructor and a
-  //      prototype, but for compliance and clarity with 'use strict', we should.
-  //      With 'use strict', `this` will NOT default to pointing to the base
-  //      object (window), so we explicitly say that it's a pointer to its
-  //      function's parent object by defining a constructor and prototype.
-    MergeSort = function () {};
+  /* Add stable merge sort to Array and jQuery prototypes
+  *
+  * N.B. It may seem unnecessary to define this with a constructor and a
+  *      prototype, but for compliance and clarity with 'use strict', we
+  *      should.  With 'use strict', `this` will NOT default to pointing to the
+  *      base object (window), so we explicitly say that it's a pointer to its
+  *      function's parent object by defining a constructor and prototype.
+  */
+  MergeSort = function () {};
   MergeSort.prototype = {
 
     msort: function (compare) {
@@ -40,7 +36,7 @@
       var length = this.length,
         middle = Math.floor(length / 2);
 
-      if (!compare) {
+      if (compare === undefined) {
         compare = function (left, right) {
           if (left < right) {
             return -1;
@@ -92,7 +88,6 @@
 
 
 
-
   ///////////////////////////////////////////////////////////////////////////////
   // Constructors and utility functions. Utility functions are specifically meant
   // NOT to be methods of the Muster object.
@@ -100,9 +95,16 @@
 
   // Constructor
   function Muster(args) {
-    if (args) {
+
+    if (typeof args === 'string') {
+      this.database = args;
+    } else if (args !== undefined) {
       this.url = args.url;
       this.database = args.database;
+    }
+
+    if (this.url === undefined) {
+      this.url = DEFAULT_URL;
     }
   }
 
@@ -133,36 +135,39 @@
     return [url, '?', parameterPairs.join('&')].join('');
   }
 
-  // Return a copy of the table which supports stable sorting when the table's
-  // column headings are clicked.
-  //
-  // N.B. If table contents are modified after the table is sorted, sorting and
-  //      reverse sorting by clicking the same heading multiple times WILL NOT
-  //      correctly sort based on the new content. Sorting again by the same
-  //      column just reverses the rows. This has the dual benefits of being
-  //      efficient and maintaining a stable sort. If, in the future, Muster
-  //      needs to handle sorting a table after data has been modified
-  //      dynamically, all of the headings should be stripped of their 'sort' and
-  //      'rsort' classes (i.e.  th.removeClass('sorted').removeClass('rsorted'))
-  //      BEFORE sorting is performed to ensure a new sort is performed and that
-  //      the order isn't simply reversed.
+  /* Return a copy of the table which supports stable sorting when the table's
+  * column headings are clicked.
+  *
+  * N.B. If table contents are modified after the table is sorted, sorting and
+  *      reverse sorting by clicking the same heading multiple times WILL NOT
+  *      correctly sort based on the new content. Sorting again by the same
+  *      column just reverses the rows. This has the dual benefits of being
+  *      efficient and maintaining a stable sort. If, in the future, Muster
+  *      needs to handle sorting a table after data has been modified
+  *      dynamically, all of the headings should be stripped of their 'sort'
+  *      and 'rsort' classes (i.e.
+  *      th.removeClass('sorted').removeClass('rsorted')) BEFORE sorting is
+  *      performed to ensure a new sort is performed and that the order isn't
+  *      simply reversed.
+  */
   function getSortableTable(table) {
     table.find('th').css({cursor: 'pointer'}).click(function (event) {
 
       var sortedRows,
-        th = $(event.target),        // the heading that was clicked
+        th = $(event.target), // the heading that was clicked
         table = th.closest('table'),
         tbody = table.find('tbody'),
-        index = th.index() + 1,         // the numerical position of the clicked heading
+        index = th.index() + 1, // the numerical position of the clicked heading
         rows = table.find('tbody tr'),
-        sorted = th.hasClass('sorted'),  // is the column already sorted?
+        sorted = th.hasClass('sorted'), // is the column already sorted?
         rsorted = th.hasClass('rsorted'); // is the column already reverse sorted?
 
       // Remove sort statuses from all other headings
       th.siblings().removeClass('sorted').removeClass('rsorted');
 
       // If it's already sorted, the quickest solution is to just reverse it.
-      // Otherwise, do a stable merge sort of the unsorted column and mark it as sorted.
+      // Otherwise, do a stable merge sort of the unsorted column and mark it
+      // as sorted.
       if (sorted || rsorted) {
         th.toggleClass('sorted').toggleClass('rsorted');
         sortedRows = Array.prototype.reverse.apply(rows);
@@ -345,7 +350,7 @@
         thead = table.find('thead tr'),
         tbody = table.find('tbody');
 
-      if (!columnSpec) {
+      if (columnSpec === undefined) {
         columns = columnLabels = this.columns;
       } else {
         columns = [];
@@ -402,7 +407,7 @@
 
   // Add Array.indexOf to browsers that don't have it (i.e. IE)
   (function () {
-    if (!Array.indexOf) {
+    if (Array.indexOf === undefined) {
       Array.prototype.indexOf = function (obj) {
         var i, len;
         for (i = 0, len = this.length; i < len; i += 1) {
