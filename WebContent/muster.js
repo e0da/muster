@@ -138,6 +138,8 @@
   /* Return a copy of the table which supports stable sorting when the table's
   * column headings are clicked.
   *
+  * Triggers the $(window).bind('muster_sorted') event after sorting.
+  *
   * N.B. If table contents are modified after the table is sorted, sorting and
   *      reverse sorting by clicking the same heading multiple times WILL NOT
   *      correctly sort based on the new content. Sorting again by the same
@@ -191,6 +193,9 @@
       }
 
       tbody.append(sortedRows);
+
+      $(window).trigger('muster_sorted');
+
     });
     return table;
   }
