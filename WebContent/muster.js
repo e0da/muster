@@ -381,8 +381,12 @@
 
           if (typeof this === 'function') {
 
-            // formatting function
+            // formatting function. If a jQuery object is returned, get the
+            // HTML from it.
             text = this.apply(row);
+            if (text instanceof $) {
+              text = text.html();
+            }
           } else if (row[this] instanceof Array) {
 
             // multiple values
