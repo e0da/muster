@@ -179,6 +179,13 @@ public class MusterServlet extends HttpServlet {
 		String where = request.getParameter("where");
 		String order = request.getParameter("order");
 		String callback = request.getParameter("callback");
+		String nocache = request.getParameter("nocache");
+
+		boolean noCache = false;
+
+		if (nocache != null && nocache.toLowerCase().equals("true")) {
+			noCache = true;
+		}
 
 		// Construct query string
 		String query = "SELECT " + select + " FROM " + from
@@ -197,6 +204,15 @@ public class MusterServlet extends HttpServlet {
 			log("Cache thread died!");
 			e.printStackTrace();
 			cache = getCache();
+		}
+
+		// If nocache is requested, make sure to get a fresh copy of this record
+		if (noCache) {
+			try {
+				cache.remove(query);
+			} catch (JustacheKeyNotFoundException e) {
+				// That's ok. You can request nocache even if nothing is cached.
+			}
 		}
 
 		try {
