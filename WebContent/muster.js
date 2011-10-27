@@ -343,7 +343,7 @@
       return clone;
     },
 
-    toTable: function (columnSpec, parent) {
+    toTable: function (columnSpec, parent, callback) {
 
       var columns, columnLabels,
         table = $('<table><thead><tr></tr></thead><tbody></tbody></table>'),
@@ -402,6 +402,10 @@
 
       if (parent) {
         $($(parent).html(table));
+      }
+
+      if (callback) {
+        callback.apply(table);
       }
 
       return getSortableTable(table);
