@@ -339,9 +339,11 @@ public class MusterServlet extends HttpServlet {
 		for (String column : columns) {
 			// output "column" : "value". Escape for JavaScript.
 			try {
-				out.append(String.format("      \"%s\": \"%s\",\n", column,
-						StringEscapeUtils.escapeJavaScript(results
-								.getString(column))));
+				String value = results.getString(column);
+				if (value != null) {
+					out.append(String.format("      \"%s\": \"%s\",\n", column,
+							StringEscapeUtils.escapeJavaScript(value)));
+				}
 			} catch (SQLException e) {
 				log("Couldn't get column `" + column + "`");
 				e.printStackTrace();
