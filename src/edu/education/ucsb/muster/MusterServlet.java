@@ -190,8 +190,7 @@ public class MusterServlet extends HttpServlet {
 		String out = null;
 
 		// Just in case the servlet ever decides that the cache thread should be
-		// killed (it looks like a potential memory leak by nature), check to
-		// make sure it's there before we get started.
+		// killed check to make sure it's there before we get started.
 		try {
 			cache.getThread();
 		} catch (NullPointerException e) {
