@@ -57,7 +57,7 @@ public class MusterServlet extends HttpServlet {
 		conf = loadConfiguration();
 
 		// Initialize half hour cache
-		cache = getJustache();
+		cache = getCache();
 
 		// Set reload paths
 		reloadFilePaths = new LinkedList<String>();
@@ -71,21 +71,17 @@ public class MusterServlet extends HttpServlet {
 		requiredParameters.add("from");
 		requiredParameters.add("callback");
 
-		// Test connectivity of each database configuration
-		for (DatabaseDefinition db : conf.databases) {
-			testConnectivity(db);
-		}
 	}
 
 	public void destroy() {
 		cache.die();
 	}
 
-	private Justache<String, String> getJustache() {
+	private Justache<String, String> getCache() {
 		return new Justache<String, String>(cacheTTL, cacheMaxLength);
 	}
 
-	private boolean testConnectivity(DatabaseDefinition db) {
+	private String testConnectivity(DatabaseDefinition db) {
 
 		// load driver
 		try {
@@ -95,10 +91,9 @@ public class MusterServlet extends HttpServlet {
 				DriverManager.registerDriver((Driver) Class.forName(db.driver)
 						.getConstructor().newInstance((Object[]) null));
 			} catch (Exception e1) {
-				log("A driver couldn't be loaded. Check the config file and try again. driver: `"
-						+ db.driver + "`, confPath: `" + confPath + "`");
 				e1.printStackTrace();
-				return false;
+				return "A driver couldn't be loaded. Check the config file and try again. driver: `"
+						+ db.driver + "`, confPath: `" + confPath + "`";
 			}
 		}
 
@@ -112,15 +107,11 @@ public class MusterServlet extends HttpServlet {
 			connection.setReadOnly(true);
 			connection.close();
 		} catch (Exception e) {
-
-			// No matter what exception occurs, it should not be a show
-			// stopper; we just want to see it in the logs.
-
 			e.printStackTrace();
-			return false;
+			return e.toString();
 		}
 
-		return true;
+		return "OK";
 	}
 
 	private MusterConfiguration loadConfiguration() {
@@ -168,6 +159,12 @@ public class MusterServlet extends HttpServlet {
 			return;
 		}
 
+		// output status if requested
+		if (statusRequested(request.getRequestURI())) {
+			writer.println(getStatus());
+			return;
+		}
+
 		try {
 			checkRequestValidity(request);
 		} catch (InvalidRequestException e) {
@@ -200,7 +197,7 @@ public class MusterServlet extends HttpServlet {
 		} catch (NullPointerException e) {
 			log("Cache thread died!");
 			e.printStackTrace();
-			cache = getJustache();
+			cache = getCache();
 		}
 
 		try {
@@ -220,15 +217,35 @@ public class MusterServlet extends HttpServlet {
 
 	}
 
+	private String getStatus() {
+		StringBuffer out = new StringBuffer();
+		for (DatabaseDefinition db : conf.databases) {
+			out.append(db.name + ":\t");
+			out.append(testConnectivity(db));
+			out.append("\n");
+		}
+		return out.toString();
+	}
+
+	private boolean statusRequested(String uri) {
+		if (uri.matches(".*/status$")) {
+			return true;
+		} else {
+			return false;
+		}
+	}
+
 	private void purgeCache() {
 		cache.die();
-		cache = getJustache();
+		cache = getCache();
 	}
 
 	private boolean purgeCacheRequested(String uri) {
-		if (uri.matches(".*/purge_cache$"))
+		if (uri.matches(".*/purge_cache$")) {
 			return true;
-		return false;
+		} else {
+			return false;
+		}
 	}
 
 	private String getOutputAsJson(String database, String query)
