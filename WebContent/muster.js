@@ -377,27 +377,26 @@
 
         tbody.append(tr);
         $.each(columns, function () {
-          var text;
+          var value,
+            td = $('<td>');
 
           if (typeof this === 'function') {
 
-            // formatting function. If a jQuery object is returned, get the
-            // HTML from it.
-            text = this.apply(row);
-            if (text instanceof $) {
-              text = text.html();
-            }
+            // formatting function
+            value = this.apply(row);
+
           } else if (row[this] instanceof Array) {
 
             // multiple values
-            text = row[this].join('</li><li>');
-            text = '<ul><li>' + text + '</li></ul>';
+            value = row[this].join('</li><li>');
+            value = '<ul><li>' + value + '</li></ul>';
+
           } else {
 
             // just a string
-            text = row[this];
+            value = row[this];
           }
-          tr.append('<td>' + text);
+          tr.append(td.append(value));
         });
       });
 
