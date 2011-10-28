@@ -1,3 +1,11 @@
+/*!
+ * Muster v1.0
+ * https://apps.education.ucsb.edu/redmine/projects/muster
+ * 
+ * Copyright (c) 2011, Justin Force
+ * Licensed under the BSD 3-Clause License
+ */
+
 package edu.education.ucsb.muster;
 
 import java.io.File;
