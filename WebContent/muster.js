@@ -355,7 +355,7 @@
         thead = table.find('thead tr'),
         tbody = table.find('tbody');
 
-      if (columnSpec === undefined) {
+      if (!columnSpec) {
         columns = columnLabels = this.columns;
       } else {
         columns = [];
