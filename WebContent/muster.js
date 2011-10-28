@@ -405,6 +405,8 @@
         });
       });
 
+      table = getSortableTable(table);
+
       if (parent) {
         $($(parent).html(table));
       }
@@ -413,7 +415,7 @@
         callback.apply(table);
       }
 
-      return getSortableTable(table);
+      return table;
     }
   };
 
