@@ -10,17 +10,17 @@
     order: 'Status asc'
   }, function() {
     this.toTable([
-      ['Property ID','ITG ID'],
-      ['Host Name','hostname'],
+      ['ITG ID', 'Property ID'],
+      ['Hostname', 'Host Name'],
       'Status',
-      ['Platform', 'platform'],
-      ['Model', 'model'],
-      ['Serial Number', 'serial no.'],
+      'Platform',
+      'Model',
+      'Serial Number',
       'OS',
       'CPU',
       'RAM',
       'Room',
-      ['GSE Group', 'Group'],
+      ['Group', 'GSE Group'],
       'Notes'
     ], '#itgdd');
   });
@@ -37,16 +37,26 @@
   }, function() {
 
     var table = this.serializeJoinedResults('id').toTable([
-      [function() { return this.last_name + ', ' + this.first_name; }, 'Full Name'],
-      ['title', 'Title'],
-      ['interest', 'Research Interests (list)'],
-      [function() {
-        if (this.interest instanceof Array) {
-          return this.interest.join(', ');
-        } else {
-          return this.interest;
+      [
+        'Full Name',
+        
+        function() {
+          return this.last_name + ', ' + this.first_name;
         }
-      }, 'Research Interests (comma separated)']
+      ],
+      ['Title', 'title'],
+      ['Research Interests (list)', 'interest'],
+      [
+        'Research Interests (comma separated)',
+        
+        function() {
+          if (this.interest instanceof Array) {
+            return this.interest.join(', ');
+          } else {
+            return this.interest;
+          }
+        }
+      ]
     ]);
 
     $($('#researchInterests').append(table));
