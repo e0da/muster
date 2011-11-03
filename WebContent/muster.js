@@ -1,10 +1,10 @@
 /*!
-* Muster v1.0
-* http://apps.education.ucsb.edu/redmine/projects/muster
-*
-* Copyright 2011, Justin Force
-* Licensed under the BSD 3-Clause License
-*/
+ * Muster v1.1
+ * http://apps.education.ucsb.edu/redmine/projects/muster
+ *
+ * Copyright 2011, Justin Force
+ * Licensed under the BSD 3-Clause License
+ */
 
 /*jslint browser: true, indent: 2 */
 /*global jQuery */
@@ -21,13 +21,13 @@
     DEFAULT_URL = 'https://apps.education.ucsb.edu/muster/';
 
   /* Add stable merge sort to Array and jQuery prototypes
-  *
-  * N.B. It may seem unnecessary to define this with a constructor and a
-  *      prototype, but for compliance and clarity with 'use strict', we
-  *      should.  With 'use strict', `this` will NOT default to pointing to the
-  *      base object (window), so we explicitly say that it's a pointer to its
-  *      function's parent object by defining a constructor and prototype.
-  */
+   *
+   * N.B. It may seem unnecessary to define this with a constructor and a
+   *      prototype, but for compliance and clarity with 'use strict', we
+   *      should.  With 'use strict', `this` will NOT default to pointing to the
+   *      base object (window), so we explicitly say that it's a pointer to its
+   *      function's parent object by defining a constructor and prototype.
+   */
   MergeSort = function () {};
   MergeSort.prototype = {
 
@@ -136,22 +136,22 @@
   }
 
   /* Return a copy of the table which supports stable sorting when the table's
-  * column headings are clicked.
-  *
-  * Triggers the $(window).bind('muster_sorted') event after sorting.
-  *
-  * N.B. If table contents are modified after the table is sorted, sorting and
-  *      reverse sorting by clicking the same heading multiple times WILL NOT
-  *      correctly sort based on the new content. Sorting again by the same
-  *      column just reverses the rows. This has the dual benefits of being
-  *      efficient and maintaining a stable sort. If, in the future, Muster
-  *      needs to handle sorting a table after data has been modified
-  *      dynamically, all of the headings should be stripped of their 'sort'
-  *      and 'rsort' classes (i.e.
-  *      th.removeClass('sorted').removeClass('rsorted')) BEFORE sorting is
-  *      performed to ensure a new sort is performed and that the order isn't
-  *      simply reversed.
-  */
+   * column headings are clicked.
+   *
+   * Triggers the $(window).bind('muster_sorted') event after sorting.
+   *
+   * N.B. If table contents are modified after the table is sorted, sorting and
+   *      reverse sorting by clicking the same heading multiple times WILL NOT
+   *      correctly sort based on the new content. Sorting again by the same
+   *      column just reverses the rows. This has the dual benefits of being
+   *      efficient and maintaining a stable sort. If, in the future, Muster
+   *      needs to handle sorting a table after data has been modified
+   *      dynamically, all of the headings should be stripped of their 'sort'
+   *      and 'rsort' classes (i.e.
+   *      th.removeClass('sorted').removeClass('rsorted')) BEFORE sorting is
+   *      performed to ensure a new sort is performed and that the order isn't
+   *      simply reversed.
+   */
   function getSortableTable(table) {
     table.find('th').css({cursor: 'pointer'}).click(function (event) {
 
@@ -312,20 +312,20 @@
       clone.results = [];
 
       /* For each row in each group, examine the values one at a time.
-      *
-      *   - If the value isn't yet defined in the output, just copy the
-      *     incoming value to the output
-      *
-      *   - If the value in the output is already defined and is a string, it
-      *     is a single value. We convert it to an array consisting of the
-      *     original value plus the incoming value.
-      *
-      *   - Otherwise, the output is already an array. Just push the new value
-      *     onto it.
-      *
-      * Once we figure out the row contents, we push it into the clone and
-      * return the clone at the end.
-      */
+       *
+       *   - If the value isn't yet defined in the output, just copy the
+       *     incoming value to the output
+       *
+       *   - If the value in the output is already defined and is a string, it
+       *     is a single value. We convert it to an array consisting of the
+       *     original value plus the incoming value.
+       *
+       *   - Otherwise, the output is already an array. Just push the new value
+       *     onto it.
+       *
+       * Once we figure out the row contents, we push it into the clone and
+       * return the clone at the end.
+       */
       $.each(grouped, function () {
         var mergedRow = {};
         $.each(this.results, function () {
