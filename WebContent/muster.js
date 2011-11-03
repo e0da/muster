@@ -289,7 +289,7 @@
       return ret;
     },
 
-    /* Return a modified Muster which joins together similar rows based on
+   /* Return a modified Muster which joins together similar rows based on
     * `uniqueColumn` (usually something like "id"). Columns with multiple
     * values become nested.
     *
@@ -303,7 +303,7 @@
     * { "id": 2, "friend": [ "Bob", "Doug" ] }
     * { "id": 3, "friend": [ "Sue", "Daisy" ] }
     */
-    serializeJoinedResults: function (uniqueColumn) {
+    serializeBy: function(uniqueColumn) {
 
       var grouped = this.groupBy(uniqueColumn),
         columns = grouped[0].columns,
@@ -346,6 +346,13 @@
       });
 
       return clone;
+    },
+
+    /*
+     * Legacy support for old syntax
+     */
+    serializeJoinedResults: function (uniqueColumn) {
+      return this.serializeBy(uniqueColumn);
     },
 
     toTable: function (columnSpec, parent, callback) {

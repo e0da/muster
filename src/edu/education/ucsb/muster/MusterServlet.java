@@ -96,12 +96,10 @@ public class MusterServlet extends HttpServlet {
 			DriverManager.getDriver(db.url);
 		} catch (SQLException e) {
 			try {
-				DriverManager.registerDriver((Driver) Class.forName(db.driver)
-						.getConstructor().newInstance((Object[]) null));
+				DriverManager.registerDriver((Driver) Class.forName(db.driver).getConstructor().newInstance((Object[]) null));
 			} catch (Exception e1) {
 				e1.printStackTrace();
-				return "A driver couldn't be loaded. Check the config file and try again. driver: `"
-						+ db.driver + "`, confPath: `" + confPath + "`";
+				return "A driver couldn't be loaded. Check the config file and try again. driver: `" + db.driver + "`, confPath: `" + confPath + "`";
 			}
 		}
 
@@ -110,8 +108,7 @@ public class MusterServlet extends HttpServlet {
 		// Add the connection to our list and try setting readOnly to test
 		Connection connection = null;
 		try {
-			connection = DriverManager.getConnection(db.url, db.username,
-					db.password);
+			connection = DriverManager.getConnection(db.url, db.username, db.password);
 			connection.setReadOnly(true);
 			connection.close();
 		} catch (Exception e) {
@@ -129,8 +126,7 @@ public class MusterServlet extends HttpServlet {
 		MusterConfiguration loadedConf = null;
 
 		try {
-			reader = new JsonReader(new InputStreamReader(getServletContext()
-					.getResourceAsStream(confPath), "UTF-8"));
+			reader = new JsonReader(new InputStreamReader(getServletContext().getResourceAsStream(confPath), "UTF-8"));
 		} catch (UnsupportedEncodingException e) {
 			e.printStackTrace();
 		} catch (NullPointerException e) {
@@ -147,8 +143,7 @@ public class MusterServlet extends HttpServlet {
 	 * @see HttpServlet#doGet(HttpServletRequest request, HttpServletResponse
 	 *      response)
 	 */
-	protected void doGet(HttpServletRequest request,
-			HttpServletResponse response) throws ServletException, IOException {
+	protected void doGet(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
 
 		if (reloadFilesHaveChanged()) {
 			log("Reinitializing...");
@@ -196,9 +191,7 @@ public class MusterServlet extends HttpServlet {
 		}
 
 		// Construct query string
-		String query = "SELECT " + select + " FROM " + from
-				+ ((where == null) ? "" : " WHERE " + where)
-				+ ((order == null) ? "" : " ORDER BY " + order);
+		String query = "SELECT " + select + " FROM " + from + ((where == null) ? "" : " WHERE " + where) + ((order == null) ? "" : " ORDER BY " + order);
 
 		// Attempt to retrieve query from cache. If it's expired or not present,
 		// perform the query and cache the result.
@@ -271,8 +264,7 @@ public class MusterServlet extends HttpServlet {
 		}
 	}
 
-	private String getOutputAsJson(String database, String query)
-			throws SQLException {
+	private String getOutputAsJson(String database, String query) throws SQLException {
 
 		// The output string
 		StringBuffer out = new StringBuffer();
@@ -287,8 +279,7 @@ public class MusterServlet extends HttpServlet {
 		registerDriver(db.driver, db.url);
 
 		// // Connect to the database
-		Connection connection = DriverManager.getConnection(db.url,
-				db.username, db.password);
+		Connection connection = DriverManager.getConnection(db.url, db.username, db.password);
 
 		// // Perform the query
 		PreparedStatement statement = connection.prepareStatement(query);
@@ -309,8 +300,7 @@ public class MusterServlet extends HttpServlet {
 		for (int i = 1; i < columnCount + 1; i++) {
 			// We're only dealing with JSON, so the column names should be
 			// JavaScript-friendly.
-			columns.add(StringEscapeUtils.escapeJavaScript(meta
-					.getColumnName(i)));
+			columns.add(StringEscapeUtils.escapeJavaScript(meta.getColumnName(i)));
 		}
 		out.append("{\n  \"columns\" : [ ");
 
@@ -349,8 +339,7 @@ public class MusterServlet extends HttpServlet {
 			try {
 				String value = results.getString(column);
 				if (value != null) {
-					out.append(String.format("      \"%s\": \"%s\",\n", column,
-							StringEscapeUtils.escapeJavaScript(value)));
+					out.append(String.format("      \"%s\": \"%s\",\n", column, StringEscapeUtils.escapeJavaScript(value)));
 				}
 			} catch (SQLException e) {
 				log("Couldn't get column `" + column + "`");
@@ -366,8 +355,7 @@ public class MusterServlet extends HttpServlet {
 		return "    {\n" + out + "\n    },\n";
 	}
 
-	private void checkRequestValidity(HttpServletRequest request)
-			throws InvalidRequestException {
+	private void checkRequestValidity(HttpServletRequest request) throws InvalidRequestException {
 
 		boolean requiredParametersAreMissing = false;
 		LinkedList<String> missingRequiredParms = new LinkedList<String>();
@@ -384,19 +372,15 @@ public class MusterServlet extends HttpServlet {
 			for (String parm : missingRequiredParms) {
 				missingParmsString += parm + ", ";
 			}
-			missingParmsString = missingParmsString.substring(0,
-					missingParmsString.length() - 2);
-			throw new InvalidRequestException(
-					"The request is invalid. Missing required parameter(s): "
-							+ missingParmsString);
+			missingParmsString = missingParmsString.substring(0, missingParmsString.length() - 2);
+			throw new InvalidRequestException("The request is invalid. Missing required parameter(s): " + missingParmsString);
 
 		}
 	}
 
 	private Driver registerDriver(String driver, String url) {
 		try {
-			DriverManager.registerDriver((Driver) Class.forName(driver)
-					.getConstructor().newInstance((Object[]) null));
+			DriverManager.registerDriver((Driver) Class.forName(driver).getConstructor().newInstance((Object[]) null));
 			return DriverManager.getDriver(url);
 		} catch (Exception e) {
 			log("Could not load driver `" + driver + "` for url `" + url + "`");
