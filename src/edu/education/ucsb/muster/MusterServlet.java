@@ -96,10 +96,12 @@ public class MusterServlet extends HttpServlet {
 			DriverManager.getDriver(db.url);
 		} catch (SQLException e) {
 			try {
-				DriverManager.registerDriver((Driver) Class.forName(db.driver).getConstructor().newInstance((Object[]) null));
+				DriverManager.registerDriver((Driver) Class.forName(db.driver).getConstructor()
+						.newInstance((Object[]) null));
 			} catch (Exception e1) {
 				e1.printStackTrace();
-				return "A driver couldn't be loaded. Check the config file and try again. driver: `" + db.driver + "`, confPath: `" + confPath + "`";
+				return "A driver couldn't be loaded. Check the config file and try again. driver: `" + db.driver
+						+ "`, confPath: `" + confPath + "`";
 			}
 		}
 
@@ -191,7 +193,8 @@ public class MusterServlet extends HttpServlet {
 		}
 
 		// Construct query string
-		String query = "SELECT " + select + " FROM " + from + ((where == null) ? "" : " WHERE " + where) + ((order == null) ? "" : " ORDER BY " + order);
+		String query = "SELECT " + select + " FROM " + from + ((where == null) ? "" : " WHERE " + where)
+				+ ((order == null) ? "" : " ORDER BY " + order);
 
 		// Attempt to retrieve query from cache. If it's expired or not present,
 		// perform the query and cache the result.
@@ -339,7 +342,8 @@ public class MusterServlet extends HttpServlet {
 			try {
 				String value = results.getString(column);
 				if (value != null) {
-					out.append(String.format("      \"%s\": \"%s\",\n", column, StringEscapeUtils.escapeJavaScript(value)));
+					out.append(String.format("      \"%s\": \"%s\",\n", column,
+							StringEscapeUtils.escapeJavaScript(value)));
 				}
 			} catch (SQLException e) {
 				log("Couldn't get column `" + column + "`");
@@ -373,7 +377,8 @@ public class MusterServlet extends HttpServlet {
 				missingParmsString += parm + ", ";
 			}
 			missingParmsString = missingParmsString.substring(0, missingParmsString.length() - 2);
-			throw new InvalidRequestException("The request is invalid. Missing required parameter(s): " + missingParmsString);
+			throw new InvalidRequestException("The request is invalid. Missing required parameter(s): "
+					+ missingParmsString);
 
 		}
 	}
