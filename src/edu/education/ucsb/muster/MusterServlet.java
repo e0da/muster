@@ -1,5 +1,5 @@
 /*!
- * Muster v1.1
+ * Muster v1.2
  * https://apps.education.ucsb.edu/redmine/projects/muster
  * 
  * Copyright (c) 2011, Justin Force
@@ -288,13 +288,6 @@ public class MusterServlet extends HttpServlet {
 		PreparedStatement statement = connection.prepareStatement(query);
 		statement.execute();
 		ResultSet results = statement.getResultSet();
-
-		// return an empty JSON object if the found set is empty
-		results.last();
-		if (results.getRow() == 0) {
-			return "{}";
-		}
-		results.beforeFirst();
 
 		// Get and write the column names
 		ResultSetMetaData meta = results.getMetaData();

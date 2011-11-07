@@ -1,5 +1,5 @@
 /*!
- * Muster v1.1
+ * Muster v1.2
  * http://apps.education.ucsb.edu/redmine/projects/muster
  *
  * Copyright 2011, Justin Force
@@ -305,11 +305,16 @@
     */
     serializeBy: function(uniqueColumn) {
 
-      var grouped = this.groupBy(uniqueColumn),
-        columns = grouped[0].columns,
+      var columns,
+        grouped = this.groupBy(uniqueColumn),
         clone = this.clone();
 
       clone.results = [];
+      if (grouped.length === 0) {
+        return clone;
+      }
+
+      columns = grouped[0].columns;
 
       /* For each row in each group, examine the values one at a time.
        *
