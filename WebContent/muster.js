@@ -4,44 +4,44 @@
  *
  * Copyright 2011, Justin Force
  * Licensed under the BSD 3-Clause License
+ *
+ * Includes "Merge Sort in JavaScript"
  */
 
 /*jslint browser: true, indent: 2 */
 /*global jQuery */
 
-(function (context, $) {
 
-  'use strict'; // strict ECMAScript interpretation
+// Merge Sort
 
+/*!
+ * Merge Sort in JavaScript v1.0
+ * http://github.com/sidewaysmilk/merge-sort
+ *
+ * Copyright (c) 2011, Justin Force
+ * Licensed under the BSD 3-Clause License
+ */
 
-  var MergeSort, // object to privide merge sort for Array and jQuery
+/*jslint browser: true, indent: 2 */
+/*global jQuery */
 
-    // Constants
-    POSSIBLE_PARAMETERS = [ 'database', 'select', 'from', 'where', 'order' ],
-    DEFAULT_URL = 'https://apps.education.ucsb.edu/muster/';
+(function () {
 
-  /* Add stable merge sort to Array and jQuery prototypes
-   *
-   * N.B. It may seem unnecessary to define this with a constructor and a
-   *      prototype, but for compliance and clarity with 'use strict', we
-   *      should.  With 'use strict', `this` will NOT default to pointing to the
-   *      base object (window), so we explicitly say that it's a pointer to its
-   *      function's parent object by defining a constructor and prototype.
-   */
-  MergeSort = function () {};
-  MergeSort.prototype = {
+  'use strict';
 
-    msort: function (compare) {
+  // Add stable merge sort method to Array prototype
+  if (!Array.mergeSort) {
+    Array.prototype.mergeSort = function (compare) {
 
       var length = this.length,
         middle = Math.floor(length / 2);
 
-      if (compare === undefined) {
+      // define default comparison function if none is defined
+      if (!compare) {
         compare = function (left, right) {
-          if (left < right) {
+          if (left  <  right) {
             return -1;
-          }
-          if (left === right) {
+          } else if (left === right) {
             return 0;
           } else {
             return 1;
@@ -78,15 +78,33 @@
       }
 
       return merge(
-        this.slice(0, middle).msort(compare),
-        this.slice(middle, length).msort(compare),
+        this.slice(0, middle).mergeSort(compare),
+        this.slice(middle, length).mergeSort(compare),
         compare
       );
-    }
-  };
-  Array.prototype.msort = jQuery.fn.msort = MergeSort.prototype.msort;
+    };
+  }
+
+  // Add merge sort to jQuery if it's present
+  if (window.jQuery !== undefined) {
+    jQuery.fn.mergeSort = function (compare) {
+      return jQuery(Array.prototype.mergeSort.call(this, compare));
+    };
+    jQuery.mergeSort = function (array, compare) {
+      return Array.prototype.mergeSort.call(array, compare);
+    };
+  }
+
+}());
 
 
+// Muster
+(function (context, $) {
+
+  'use strict'; // strict ECMAScript interpretation
+
+
+  
 
   ///////////////////////////////////////////////////////////////////////////////
   // Constructors and utility functions. Utility functions are specifically meant
@@ -174,7 +192,7 @@
         th.toggleClass('sorted').toggleClass('rsorted');
         sortedRows = Array.prototype.reverse.apply(rows);
       } else {
-        sortedRows = rows.msort(function (left, right) {
+        sortedRows = rows.mergeSort(function (left, right) {
 
           // compare the text of each cell, case insensitive
           left  =  $(left).find('td:nth-child(' + index + ')').text().toLowerCase();
