@@ -1,5 +1,5 @@
 /*!
- * Muster v1.3
+ * Muster v1.4
  * https://apps.education.ucsb.edu/redmine/projects/muster
  * 
  * Copyright (c) 2011, Justin Force
@@ -44,15 +44,10 @@ public class MusterServlet extends HttpServlet {
 
 	private static final String confPath = "/WEB-INF/muster.conf.json";
 
-	private static final int cacheTTL = 30 * 60 * 1000; // 30 minutes
-
-	private static final int cacheMaxLength = 128;
-
 	private MusterConfiguration conf;
 
 	/**
-	 * If any of the files at these paths change, we should reinitialize the
-	 * servlet.
+	 * If any of the files at these paths change, we should reinitialize the servlet.
 	 */
 	private static LinkedList<String> reloadFilePaths;
 
@@ -60,12 +55,11 @@ public class MusterServlet extends HttpServlet {
 
 	private static Justache<String, String> cache;
 
+	private static ExceptionQueue exceptions;
+
 	public void init() {
 
 		conf = loadConfiguration();
-
-		// Initialize half hour cache
-		cache = getCache();
 
 		// Set reload paths
 		reloadFilePaths = new LinkedList<String>();
@@ -79,6 +73,11 @@ public class MusterServlet extends HttpServlet {
 		requiredParameters.add("from");
 		requiredParameters.add("callback");
 
+		// Keep a queue of exceptions that have occurred so that we can review it
+		exceptions = new ExceptionQueue(conf.exceptionQueueLength);
+
+		// Initialize cache
+		cache = getCache();
 	}
 
 	public void destroy() {
@@ -86,7 +85,7 @@ public class MusterServlet extends HttpServlet {
 	}
 
 	private Justache<String, String> getCache() {
-		return new Justache<String, String>(cacheTTL, cacheMaxLength);
+		return new Justache<String, String>(conf.cacheTTL, conf.cacheMaxLength);
 	}
 
 	private String testConnectivity(DatabaseDefinition db) {
@@ -99,7 +98,7 @@ public class MusterServlet extends HttpServlet {
 				DriverManager.registerDriver((Driver) Class.forName(db.driver).getConstructor()
 						.newInstance((Object[]) null));
 			} catch (Exception e1) {
-				e1.printStackTrace();
+				addException(e1);
 				return "A driver couldn't be loaded. Check the config file and try again. driver: `" + db.driver
 						+ "`, confPath: `" + confPath + "`";
 			}
@@ -114,7 +113,7 @@ public class MusterServlet extends HttpServlet {
 			connection.setReadOnly(true);
 			connection.close();
 		} catch (Exception e) {
-			e.printStackTrace();
+			addException(e);
 			return e.toString();
 		}
 
@@ -130,10 +129,10 @@ public class MusterServlet extends HttpServlet {
 		try {
 			reader = new JsonReader(new InputStreamReader(getServletContext().getResourceAsStream(confPath), "UTF-8"));
 		} catch (UnsupportedEncodingException e) {
-			e.printStackTrace();
+			addException(e);
 		} catch (NullPointerException e) {
 			log("Couldn't open config file `" + confPath + "`");
-			e.printStackTrace();
+			addException(e);
 		}
 
 		loadedConf = gson.fromJson(reader, MusterConfiguration.class);
@@ -142,8 +141,7 @@ public class MusterServlet extends HttpServlet {
 	}
 
 	/**
-	 * @see HttpServlet#doGet(HttpServletRequest request, HttpServletResponse
-	 *      response)
+	 * @see HttpServlet#doGet(HttpServletRequest request, HttpServletResponse response)
 	 */
 	protected void doGet(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
 
@@ -174,7 +172,7 @@ public class MusterServlet extends HttpServlet {
 			checkRequestValidity(request);
 		} catch (InvalidRequestException e) {
 			log("Invalid request. Check parameters.");
-			e.printStackTrace();
+			addException(e);
 			return;
 		}
 
@@ -206,7 +204,7 @@ public class MusterServlet extends HttpServlet {
 			cache.getThread();
 		} catch (NullPointerException e) {
 			log("Cache thread died!");
-			e.printStackTrace();
+			addException(e);
 			cache = getCache();
 		}
 
@@ -227,13 +225,33 @@ public class MusterServlet extends HttpServlet {
 				cache.put(query, out);
 			} catch (SQLException e1) {
 				log(query);
-				e1.printStackTrace();
+				addException(e1);
 			}
 		}
 
 		// Write response
 		writer.println(callback + '(' + out + ')');
 
+	}
+
+	private boolean addException(Exception e) {
+		printException(e);
+		return exceptions.add(e);
+	}
+
+	private void printException(Exception e) {
+		System.out.println(getExceptionString(e));
+	}
+
+	private String getExceptionString(Exception e) {
+		StringBuffer out = new StringBuffer();
+		out.append(e.toString());
+		out.append('\n');
+		for (StackTraceElement element : e.getStackTrace()) {
+			out.append(element);
+			out.append('\n');
+		}
+		return out.toString();
 	}
 
 	private String getStatus() {
@@ -243,11 +261,19 @@ public class MusterServlet extends HttpServlet {
 			out.append(testConnectivity(db));
 			out.append("\n");
 		}
+		
+		out.append("\n\nLast " + conf.exceptionQueueLength + " exceptions, oldest first\n\n");
+		
+		for (Exception e : exceptions) {
+			out.append("\n\n--------------------------------------\n");
+			out.append(getExceptionString(e));
+		}
+		
 		return out.toString();
 	}
 
 	private boolean statusRequested(String uri) {
-		if (uri.matches(".*/status$")) {
+		if (uri.matches("^/muster/status$") || uri.matches("^/muster/$")) {
 			return true;
 		} else {
 			return false;
@@ -260,7 +286,7 @@ public class MusterServlet extends HttpServlet {
 	}
 
 	private boolean purgeCacheRequested(String uri) {
-		if (uri.matches(".*/purge_cache$")) {
+		if (uri.matches("^/muster/purge_cache$")) {
 			return true;
 		} else {
 			return false;
@@ -340,7 +366,7 @@ public class MusterServlet extends HttpServlet {
 				}
 			} catch (SQLException e) {
 				log("Couldn't get column `" + column + "`");
-				e.printStackTrace();
+				addException(e);
 			}
 		}
 
@@ -382,7 +408,7 @@ public class MusterServlet extends HttpServlet {
 			return DriverManager.getDriver(url);
 		} catch (Exception e) {
 			log("Could not load driver `" + driver + "` for url `" + url + "`");
-			e.printStackTrace();
+			addException(e);
 		}
 		return null;
 	}

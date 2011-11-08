@@ -7,7 +7,10 @@ public class MusterConfiguration {
 	public LinkedList<DatabaseDefinition> databases;
 	public String reloadFilePath;
 	public long lastLoaded;
-
+	public int cacheTTL;
+	public int cacheMaxLength;
+	public int exceptionQueueLength;
+	
 	private MusterConfiguration() {
 	}
 
