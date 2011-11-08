@@ -1,5 +1,5 @@
 /*!
- * Muster v1.2
+ * Muster v1.3
  * http://apps.education.ucsb.edu/redmine/projects/muster
  *
  * Copyright 2011, Justin Force
@@ -10,7 +10,6 @@
 
 /*jslint browser: true, indent: 2 */
 /*global jQuery */
-
 
 // Merge Sort
 
@@ -104,7 +103,10 @@
   'use strict'; // strict ECMAScript interpretation
 
 
-  
+
+  // Constants
+  var POSSIBLE_PARAMETERS = [ 'database', 'select', 'from', 'where', 'order' ],
+    DEFAULT_URL = 'https://apps.education.ucsb.edu/muster/';
 
   ///////////////////////////////////////////////////////////////////////////////
   // Constructors and utility functions. Utility functions are specifically meant
@@ -321,7 +323,7 @@
     * { "id": 2, "friend": [ "Bob", "Doug" ] }
     * { "id": 3, "friend": [ "Sue", "Daisy" ] }
     */
-    serializeBy: function(uniqueColumn) {
+    serializeBy: function (uniqueColumn) {
 
       var columns,
         grouped = this.groupBy(uniqueColumn),
