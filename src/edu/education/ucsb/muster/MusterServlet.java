@@ -46,6 +46,8 @@ public class MusterServlet extends HttpServlet {
 
 	private MusterConfiguration conf;
 
+	private String missingParmsString;
+
 	/**
 	 * If any of the files at these paths change, we should reinitialize the servlet.
 	 */
@@ -145,6 +147,8 @@ public class MusterServlet extends HttpServlet {
 	 */
 	protected void doGet(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
 
+		boolean validRequest;
+
 		if (reloadFilesHaveChanged()) {
 			log("Reinitializing...");
 			init();
@@ -155,6 +159,8 @@ public class MusterServlet extends HttpServlet {
 		PrintWriter writer = response.getWriter();
 		response.setContentType("text/javascript");
 
+		validRequest = valid(request);
+
 		// purge the cache if we're asked to (purge_cache URI is called)
 		if (purgeCacheRequested(request.getRequestURI())) {
 			purgeCache();
@@ -163,17 +169,14 @@ public class MusterServlet extends HttpServlet {
 		}
 
 		// output status if requested
-		if (statusRequested(request.getRequestURI())) {
+		if (statusRequested(request.getRequestURI(), validRequest)) {
 			writer.println(getStatus());
 			return;
 		}
 
-		try {
-			checkRequestValidity(request);
-		} catch (InvalidRequestException e) {
-			log("Invalid request. Check parameters.");
-			addException(e);
-			return;
+		if (!validRequest) {
+			addException(new InvalidRequestException("The request is invalid. Missing required parameter(s): "
+					+ missingParmsString));
 		}
 
 		String database = request.getParameter("database");
@@ -261,19 +264,19 @@ public class MusterServlet extends HttpServlet {
 			out.append(testConnectivity(db));
 			out.append("\n");
 		}
-		
+
 		out.append("\n\nLast " + conf.exceptionQueueLength + " exceptions, oldest first\n\n");
-		
+
 		for (Exception e : exceptions) {
 			out.append("\n\n--------------------------------------\n");
 			out.append(getExceptionString(e));
 		}
-		
+
 		return out.toString();
 	}
 
-	private boolean statusRequested(String uri) {
-		if (uri.matches("^/muster/status$") || uri.matches("^/muster/$")) {
+	private boolean statusRequested(String uri, boolean validRequest) {
+		if (uri.matches("^/muster/status$") || (uri.matches("^/muster/$") && !validRequest)) {
 			return true;
 		} else {
 			return false;
@@ -378,7 +381,7 @@ public class MusterServlet extends HttpServlet {
 		return "    {\n" + out + "\n    },\n";
 	}
 
-	private void checkRequestValidity(HttpServletRequest request) throws InvalidRequestException {
+	private boolean valid(HttpServletRequest request) {
 
 		boolean requiredParametersAreMissing = false;
 		LinkedList<String> missingRequiredParms = new LinkedList<String>();
@@ -390,16 +393,14 @@ public class MusterServlet extends HttpServlet {
 			}
 		}
 		if (requiredParametersAreMissing) {
-
-			String missingParmsString = "";
+			missingParmsString = "";
 			for (String parm : missingRequiredParms) {
 				missingParmsString += parm + ", ";
 			}
 			missingParmsString = missingParmsString.substring(0, missingParmsString.length() - 2);
-			throw new InvalidRequestException("The request is invalid. Missing required parameter(s): "
-					+ missingParmsString);
-
+			return false;
 		}
+		return true;
 	}
 
 	private Driver registerDriver(String driver, String url) {
