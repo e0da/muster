@@ -1,5 +1,5 @@
 /*!
- * Muster v1.4
+ * Muster v1.5
  * https://apps.education.ucsb.edu/redmine/projects/muster
  * 
  * Copyright (c) 2011, Justin Force
@@ -46,14 +46,10 @@ public class MusterServlet extends HttpServlet {
 
 	private MusterConfiguration conf;
 
-	private String missingParmsString;
-
 	/**
 	 * If any of the files at these paths change, we should reinitialize the servlet.
 	 */
 	private static LinkedList<String> reloadFilePaths;
-
-	private static LinkedList<String> requiredParameters;
 
 	private static Justache<String, String> cache;
 
@@ -67,13 +63,6 @@ public class MusterServlet extends HttpServlet {
 		reloadFilePaths = new LinkedList<String>();
 		reloadFilePaths.add(confPath);
 		reloadFilePaths.add(conf.reloadFilePath);
-
-		// Set required GET parameters
-		requiredParameters = new LinkedList<String>();
-		requiredParameters.add("database");
-		requiredParameters.add("select");
-		requiredParameters.add("from");
-		requiredParameters.add("callback");
 
 		// Keep a queue of exceptions that have occurred so that we can review it
 		exceptions = new ExceptionQueue(conf.exceptionQueueLength);
@@ -100,9 +89,9 @@ public class MusterServlet extends HttpServlet {
 				DriverManager.registerDriver((Driver) Class.forName(db.driver).getConstructor()
 						.newInstance((Object[]) null));
 			} catch (Exception e1) {
-				addException(e1);
-				return "A driver couldn't be loaded. Check the config file and try again. driver: `" + db.driver
-						+ "`, confPath: `" + confPath + "`";
+				addException(e1, "A driver couldn't be loaded. Check the config file and try again. driver: `"
+						+ db.driver + "`, confPath: `" + confPath + "`");
+				return "FAIL";
 			}
 		}
 
@@ -115,7 +104,7 @@ public class MusterServlet extends HttpServlet {
 			connection.setReadOnly(true);
 			connection.close();
 		} catch (Exception e) {
-			addException(e);
+			addException(e, "Setting readonly failed on " + db.url);
 			return e.toString();
 		}
 
@@ -131,10 +120,9 @@ public class MusterServlet extends HttpServlet {
 		try {
 			reader = new JsonReader(new InputStreamReader(getServletContext().getResourceAsStream(confPath), "UTF-8"));
 		} catch (UnsupportedEncodingException e) {
-			addException(e);
+			addException(e, "Unsupported encoding");
 		} catch (NullPointerException e) {
-			log("Couldn't open config file `" + confPath + "`");
-			addException(e);
+			addException(e, "Couldn't open config file `" + confPath + "`");
 		}
 
 		loadedConf = gson.fromJson(reader, MusterConfiguration.class);
@@ -147,8 +135,6 @@ public class MusterServlet extends HttpServlet {
 	 */
 	protected void doGet(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
 
-		boolean validRequest;
-
 		if (reloadFilesHaveChanged()) {
 			log("Reinitializing...");
 			init();
@@ -159,24 +145,11 @@ public class MusterServlet extends HttpServlet {
 		PrintWriter writer = response.getWriter();
 		response.setContentType("text/javascript");
 
-		validRequest = valid(request);
-
 		// purge the cache if we're asked to (purge_cache URI is called)
 		if (purgeCacheRequested(request.getRequestURI())) {
 			purgeCache();
 			writer.println("Cache purged");
 			return;
-		}
-
-		// output status if requested
-		if (statusRequested(request.getRequestURI(), validRequest)) {
-			writer.println(getStatus());
-			return;
-		}
-
-		if (!validRequest) {
-			addException(new InvalidRequestException("The request is invalid. Missing required parameter(s): "
-					+ missingParmsString));
 		}
 
 		String database = request.getParameter("database");
@@ -186,6 +159,13 @@ public class MusterServlet extends HttpServlet {
 		String order = request.getParameter("order");
 		String callback = request.getParameter("callback");
 		String nocache = request.getParameter("nocache");
+
+		// output status if requested
+		boolean callbackSet = callback != null; // true if callback is set
+		if (statusRequested(request.getRequestURI(), callbackSet)) {
+			writer.println(getStatus());
+			return;
+		}
 
 		boolean noCache = false;
 
@@ -206,8 +186,7 @@ public class MusterServlet extends HttpServlet {
 		try {
 			cache.getThread();
 		} catch (NullPointerException e) {
-			log("Cache thread died!");
-			addException(e);
+			addException(e, "Cache thread died!");
 			cache = getCache();
 		}
 
@@ -227,8 +206,9 @@ public class MusterServlet extends HttpServlet {
 				out = getOutputAsJson(database, query);
 				cache.put(query, out);
 			} catch (SQLException e1) {
-				log(query);
-				addException(e1);
+				addException(e1, "SQLException: " + query);
+			} catch (NullPointerException e1) {
+				addException(e1, "NullPointerException: " + query);
 			}
 		}
 
@@ -237,20 +217,17 @@ public class MusterServlet extends HttpServlet {
 
 	}
 
-	private boolean addException(Exception e) {
-		printException(e);
-		return exceptions.add(e);
+	private void addException(Exception exception, String message) {
+		log(message);
+		exception.printStackTrace();
+		exceptions.push(new ExceptionWrapper(exception, message));
 	}
 
-	private void printException(Exception e) {
-		System.out.println(getExceptionString(e));
-	}
-
-	private String getExceptionString(Exception e) {
+	private String getExceptionString(ExceptionWrapper e) {
 		StringBuffer out = new StringBuffer();
-		out.append(e.toString());
+		out.append(e.getException().toString());
 		out.append('\n');
-		for (StackTraceElement element : e.getStackTrace()) {
+		for (StackTraceElement element : e.getException().getStackTrace()) {
 			out.append(element);
 			out.append('\n');
 		}
@@ -258,25 +235,33 @@ public class MusterServlet extends HttpServlet {
 	}
 
 	private String getStatus() {
-		StringBuffer out = new StringBuffer();
+		StringBuffer out = new StringBuffer("Muster v1.5\n\n");
 		for (DatabaseDefinition db : conf.databases) {
 			out.append(db.name + ":\t");
 			out.append(testConnectivity(db));
 			out.append("\n");
 		}
 
-		out.append("\n\nLast " + conf.exceptionQueueLength + " exceptions, oldest first\n\n");
+		out.append("\n\nLast " + conf.exceptionQueueLength + " exceptions\n\n");
 
-		for (Exception e : exceptions) {
-			out.append("\n\n--------------------------------------\n");
+		for (ExceptionWrapper e : exceptions) {
+			out.append("==================================\n");
+			out.append("-- " + e.getDate().toString() + " --\n");
+			out.append("==================================\n");
+			out.append('\n');
+			out.append(e.getNote() + '\n');
+			out.append('\n');
+			out.append("Stack trace:\n");
+			out.append("--------------------\n");
 			out.append(getExceptionString(e));
+			out.append("\n\n\n");
 		}
 
 		return out.toString();
 	}
 
-	private boolean statusRequested(String uri, boolean validRequest) {
-		if (uri.matches("^/muster/status$") || (uri.matches("^/muster/$") && !validRequest)) {
+	private boolean statusRequested(String uri, boolean callbackSet) {
+		if (uri.matches("^/muster/status$") || (uri.matches("^/muster/$") && !callbackSet)) {
 			return true;
 		} else {
 			return false;
@@ -368,8 +353,7 @@ public class MusterServlet extends HttpServlet {
 							StringEscapeUtils.escapeJavaScript(value)));
 				}
 			} catch (SQLException e) {
-				log("Couldn't get column `" + column + "`");
-				addException(e);
+				addException(e, "Couldn't get column `" + column + "`");
 			}
 		}
 
@@ -381,35 +365,12 @@ public class MusterServlet extends HttpServlet {
 		return "    {\n" + out + "\n    },\n";
 	}
 
-	private boolean valid(HttpServletRequest request) {
-
-		boolean requiredParametersAreMissing = false;
-		LinkedList<String> missingRequiredParms = new LinkedList<String>();
-		for (String parm : requiredParameters) {
-			String val = request.getParameter(parm);
-			if (val == null || val.isEmpty()) {
-				requiredParametersAreMissing = true;
-				missingRequiredParms.add(parm);
-			}
-		}
-		if (requiredParametersAreMissing) {
-			missingParmsString = "";
-			for (String parm : missingRequiredParms) {
-				missingParmsString += parm + ", ";
-			}
-			missingParmsString = missingParmsString.substring(0, missingParmsString.length() - 2);
-			return false;
-		}
-		return true;
-	}
-
 	private Driver registerDriver(String driver, String url) {
 		try {
 			DriverManager.registerDriver((Driver) Class.forName(driver).getConstructor().newInstance((Object[]) null));
 			return DriverManager.getDriver(url);
 		} catch (Exception e) {
-			log("Could not load driver `" + driver + "` for url `" + url + "`");
-			addException(e);
+			addException(e, "Could not load driver `" + driver + "` for url `" + url + "`");
 		}
 		return null;
 	}

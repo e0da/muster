@@ -3,30 +3,30 @@ package edu.education.ucsb.muster;
 import java.util.Iterator;
 import java.util.LinkedList;
 
-public class ExceptionQueue extends LinkedList<Exception> {
+public class ExceptionQueue extends LinkedList<ExceptionWrapper> {
 
 	private static final long serialVersionUID = -1241577278326036721L;
 
 	private int maxSize;
-	private LinkedList<Exception> exceptions;
+	private LinkedList<ExceptionWrapper> exceptions;
 
 	public ExceptionQueue(int maxSize) {
 		this.maxSize = maxSize;
-		this.exceptions = new LinkedList<Exception>();
+		this.exceptions = new LinkedList<ExceptionWrapper>();
 	}
 
-	public boolean add(Exception e) {
+	public void push(ExceptionWrapper e) {
 		while (exceptions.size() >= maxSize) {
-			exceptions.remove();
+			exceptions.removeLast();
 		}
-		return exceptions.add(e);
+		exceptions.push(e);
 	}
 	
 	public int size() {
 		return exceptions.size();
 	}
 	
-	public Iterator<Exception> iterator() {
+	public Iterator<ExceptionWrapper> iterator() {
 		return exceptions.iterator();
 	}
 
