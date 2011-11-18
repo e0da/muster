@@ -1,5 +1,5 @@
 /*!
- * Muster v1.5
+ * Muster v1.6
  * https://apps.education.ucsb.edu/redmine/projects/muster
  * 
  * Copyright (c) 2011, Justin Force
@@ -350,7 +350,7 @@ public class MusterServlet extends HttpServlet {
 				String value = results.getString(column);
 				if (value != null) {
 					out.append(String.format("      \"%s\": \"%s\",\n", column,
-							StringEscapeUtils.escapeJavaScript(value)));
+							StringEscapeUtils.escapeJavaScript(value.replaceAll("\r\n|\r", "\n"))));
 				}
 			} catch (SQLException e) {
 				addException(e, "Couldn't get column `" + column + "`");
