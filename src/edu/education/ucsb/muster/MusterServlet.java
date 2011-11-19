@@ -235,7 +235,7 @@ public class MusterServlet extends HttpServlet {
 	}
 
 	private String getStatus() {
-		StringBuffer out = new StringBuffer("Muster v1.5\n\n");
+		StringBuffer out = new StringBuffer("Muster v1.7\n\n");
 		for (DatabaseDefinition db : conf.databases) {
 			out.append(db.name + ":\t");
 			out.append(testConnectivity(db));
