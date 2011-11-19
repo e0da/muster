@@ -1,5 +1,5 @@
 /*!
- * Muster v1.6
+ * Muster v1.7
  * https://apps.education.ucsb.edu/redmine/projects/muster
  * 
  * Copyright (c) 2011, Justin Force

@@ -1,5 +1,5 @@
 /*!
- * Muster v1.6
+ * Muster v1.7
  * http://apps.education.ucsb.edu/redmine/projects/muster
  *
  * Copyright 2011, Justin Force
@@ -346,7 +346,7 @@
        *     original value plus the incoming value.
        *
        *   - Otherwise, the output is already an array. Just push the new value
-       *     onto it.
+       *     onto it unless it already exists.
        *
        * Once we figure out the row contents, we push it into the clone and
        * return the clone at the end.
@@ -354,7 +354,8 @@
       $.each(grouped, function () {
         var mergedRow = {};
         $.each(this.results, function () {
-          var row = this;
+          var i,
+            row = this;
           $.each(columns, function () {
             if (mergedRow[this] === undefined) {
               mergedRow[this] = row[this];
@@ -363,7 +364,10 @@
                 mergedRow[this] = [mergedRow[this], row[this]];
               }
             } else {
-              mergedRow[this].push(row[this]);
+              i = mergedRow[this].indexOf(row[this]);
+              if (i < 0) {
+                mergedRow[this].push(row[this]);
+              }
             }
           });
         });
