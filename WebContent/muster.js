@@ -1,5 +1,5 @@
 /*!
- * Muster v1.7
+ * Muster v1.7.1
  * http://apps.education.ucsb.edu/redmine/projects/muster
  *
  * Copyright 2011, Justin Force
@@ -400,7 +400,14 @@
           if (this instanceof Array) {
             columnLabels.push(this[0]);
             columns.push(this[1]);
-          } else if (typeof this === 'string') {
+          } else if (typeof this === 'string' || this instanceof String) {
+
+            //XXX We use both typeof and instance of to cover this weird bug in
+            //IE and Safari where reloading the page makes these things Strings
+            //instead of strings. O_o
+            // 
+            columns.push(this.toString());
+            columnLabels.push(this.toString());
             columns.push(this);
             columnLabels.push(this);
           }
