@@ -408,8 +408,6 @@
             // 
             columns.push(this.toString());
             columnLabels.push(this.toString());
-            columns.push(this);
-            columnLabels.push(this);
           }
         });
       }
