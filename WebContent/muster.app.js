@@ -1,7 +1,51 @@
+/*jslint browser: true, indent: 2 */
+/*global muster, jQuery */
+
 (function($) {
 
   'use strict';
 
+  muster('ggsedb').query({
+    select: [
+      'profile.id as id',
+      'publications."year" as pubyear',
+      'publications.title as pubtitle'
+    ].join(','),
+    from: 'profile left join publications on publications.profile_id = profile.id',
+    where: 'profile.id is not null'
+  }, function () {
+    var m = this.serializeBy('id', [
+      { publications: {title: 'pubtitle', year: 'pubyear'} }
+    ]);
+    m.toTable([
+      'id',
+      [ 'publications', function () {
+        var out = $('<ul>');
+
+        function titleAndYear(title, year) {
+          if (!title) {
+            return null;
+          } else {
+            return title + (year? ', ' + year : '');
+          }
+        }
+
+        if (this.publications instanceof Array) {
+          $.each(this.publications, function () {
+            if (this === undefined) {
+              return null;
+            }
+            out.append($('<li>').text(titleAndYear(this.title, this.year)));
+          });
+          return out;
+        } else {
+          return titleAndYear(this.publications.title, this.publications.year);
+        }
+      }]
+    ], '#itgdd');
+  });
+
+  /*
   // ITGDD demo
   muster('itg').query({
     select: '*',
@@ -61,9 +105,6 @@
 
     $($('#researchInterests').append(table));
   });
-
+*/
 }(jQuery));
-
-/*jslint browser: true, indent: 2 */
-/*global muster, jQuery */
 

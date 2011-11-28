@@ -116,7 +116,7 @@
   // Constructor
   function Muster(args) {
 
-    if (typeof args === 'string') {
+    if (typeof args === 'string' || args instanceof String) {
       this.database = args;
     } else if (args !== undefined) {
       this.url = args.url;
@@ -323,7 +323,7 @@
     * { "id": 2, "friend": [ "Bob", "Doug" ] }
     * { "id": 3, "friend": [ "Sue", "Daisy" ] }
     */
-    serializeBy: function (uniqueColumn) {
+    serializeBy: function (uniqueColumn, customProperties) {
 
       var columns,
         grouped = this.groupBy(uniqueColumn),
@@ -335,6 +335,16 @@
       }
 
       columns = grouped[0].columns;
+
+      // add labels from custom properties
+      $.each(customProperties, function () {
+        var prop;
+        for (prop in this) {
+          if (this.hasOwnProperty(prop)) {
+            columns.push(prop);
+          }
+        }
+      });
 
       /* For each row in each group, examine the values one at a time.
        *
@@ -353,20 +363,37 @@
        */
       $.each(grouped, function () {
         var mergedRow = {};
+
         $.each(this.results, function () {
           var i,
             row = this;
+
+          // add any custom properties
+          $.each(customProperties, function () {
+            var prop, attr, obj;
+            for (prop in this) {
+              if (this.hasOwnProperty(prop)) {
+                obj = {};
+                for (attr in this[prop]) {
+                  if (this[prop].hasOwnProperty(attr)) {
+                    obj[attr] = row[this[prop][attr]];
+                  }
+                }
+                row[prop] = obj;
+              }
+            }
+          });
+
           $.each(columns, function () {
             if (mergedRow[this] === undefined) {
               mergedRow[this] = row[this];
-            } else if (typeof mergedRow[this] === 'string') {
-              if (mergedRow[this] !== row[this]) {
-                mergedRow[this] = [mergedRow[this], row[this]];
+            } else if (mergedRow[this] instanceof Array) {
+              if (mergedRow[this].indexOf(row[this]) < 0) {
+                mergedRow[this].push(row[this]);
               }
             } else {
-              i = mergedRow[this].indexOf(row[this]);
-              if (i < 0) {
-                mergedRow[this].push(row[this]);
+              if (mergedRow[this] !== row[this]) {
+                mergedRow[this] = [mergedRow[this], row[this]];
               }
             }
           });
