@@ -1,13 +1,15 @@
 /*jslint browser: true, indent: 2 */
 /*global muster, jQuery */
 
-(function($) {
+(function ($) {
 
   'use strict';
 
   muster('ggsedb').query({
     select: [
       'profile.id as id',
+      'first_name',
+      'last_name',
       'publications."year" as pubyear',
       'publications.title as pubtitle'
     ].join(','),
@@ -18,7 +20,7 @@
       { publications: {title: 'pubtitle', year: 'pubyear'} }
     ]);
     m.toTable([
-      'id',
+      [ 'Name', function () { return this.first_name + ' ' + this.last_name; } ],
       [ 'publications', function () {
         var out = $('<ul>');
 
@@ -26,7 +28,7 @@
           if (!title) {
             return null;
           } else {
-            return title + (year? ', ' + year : '');
+            return title + (year ? ', ' + year : '');
           }
         }
 
@@ -42,17 +44,16 @@
           return titleAndYear(this.publications.title, this.publications.year);
         }
       }]
-    ], '#itgdd');
+    ], '#researchInterests');
   });
 
-  /*
   // ITGDD demo
   muster('itg').query({
     select: '*',
     from: 'devices',
     where: "Status <> 'EIMR' or Status is null",
     order: 'Status asc'
-  }, function() {
+  }, function () {
     this.toTable([
       ['ITG ID', 'Property ID'],
       ['Hostname', 'Host Name'],
@@ -68,6 +69,7 @@
       'Notes'
     ], '#itgdd');
   });
+  /*
 
   // Research Interests demo
   muster({

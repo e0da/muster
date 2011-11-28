@@ -309,7 +309,10 @@
       return ret;
     },
 
-   /* Return a modified Muster which joins together similar rows based on
+   /* 
+    * TODO: document customProperties arg and usage
+    *
+    * Return a modified Muster which joins together similar rows based on
     * `uniqueColumn` (usually something like "id"). Columns with multiple
     * values become nested.
     *
@@ -346,7 +349,12 @@
         }
       });
 
-      /* For each row in each group, examine the values one at a time.
+      /* 
+       * TODO: This has become significantly more complicated with the
+       * implementaiton of #93. Document this stuff well since it looks very
+       * gnarly.
+       *
+       * For each row in each group, examine the values one at a time.
        *
        *   - If the value isn't yet defined in the output, just copy the
        *     incoming value to the output
@@ -365,8 +373,7 @@
         var mergedRow = {};
 
         $.each(this.results, function () {
-          var i,
-            row = this;
+          var row = this;
 
           // add any custom properties
           $.each(customProperties, function () {
@@ -385,6 +392,21 @@
           });
 
           $.each(columns, function () {
+
+            /* Set the value for this column. We check for and avoid creating
+             * duplicates as we insert because of the nature of SQL queries.
+             * Identical values will appear in adjacent cells when it's a join
+             * query.
+             *
+             * If the merged cell isn't set, simply set it to the new value.
+             *
+             * If the merged cell contains an array, simply push the new value
+             * onto the array (as long as it doesn't already exist).
+             *
+             * If the merged cell is set and is not an array, set the merged
+             * cell to an array containing both values (as long as the new value
+             * isn't the same as the old one).
+             */
             if (mergedRow[this] === undefined) {
               mergedRow[this] = row[this];
             } else if (mergedRow[this] instanceof Array) {
