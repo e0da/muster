@@ -1,5 +1,5 @@
 /*!
- * Muster v1.7.2
+ * Muster v1.8
  * http://apps.education.ucsb.edu/redmine/projects/muster
  *
  * Copyright 2011, Justin Force
@@ -120,8 +120,24 @@
   // NOT to be methods of the Muster object.
   ///////////////////////////////////////////////////////////////////////////////
 
-  // Constructor
-  //
+  /*
+   * Return true if obj is a String
+   */
+  function isString(obj) {
+
+    // XXX We use both typeof and instance of to cover this weird bug
+    // in IE and Safari where reloading the page makes these things
+    // Strings instead of 'string's. O_o
+    //
+    // http://stackoverflow.com/a/8220468/234242
+    //
+    return (typeof obj === 'string' || obj instanceof String);
+  }
+
+
+  /*
+   * Constructor
+   */
   function Muster(args) {
 
     if (isString(args)) {
@@ -136,16 +152,19 @@
     }
   }
 
-  // Constructor wrapper.
-  // Whether called as a function or a constructor, it always returns an instance
-  // of Muster, i.e. `Muster` and `new Muster()` are equivalent.
-  //
+  /*
+   * Constructor wrapper.
+   *
+   * Whether called as a function or a constructor, it always returns an
+   * instance of Muster, i.e. `Muster` and `new Muster()` are equivalent.
+   */
   function constructorWrapper(args) {
     return new Muster(args);
   }
 
-  // Assemble the request URI
-  //
+  /*
+   * Assemble the request URI
+   */
   function getRequestUri(url, database, params) {
 
     // each value is [ 'key', 'value' ] and will become 'key=value'
@@ -163,17 +182,6 @@
     parameterPairs.push('callback=?'); // jQuery JSONP support
 
     return [url, '?', parameterPairs.join('&')].join('');
-  }
-
-  // Return true if obj is a String
-  //
-  function isString(obj) {
-
-    // XXX We use both typeof and instance of to cover this weird bug
-    // in IE and Safari where reloading the page makes these things
-    // Strings instead of strings. O_o
-    //
-    return (typeof obj === 'string' || obj instanceof String);
   }
 
   /* Return a copy of the table which supports stable sorting when the table's
@@ -345,10 +353,9 @@
         uniq = [],
         muster = this;
 
-      // XXX If we have not encountered this value before, we record its
-      // occurrence and create a Muster clone, then set its results to an
-      // empty array. If we have seen this value before, we simply push it
-      // into the array
+      // If we have not encountered this value before, we record its occurrence
+      // and create a Muster clone, then set its results to an empty array. If
+      // we have seen this value before, we simply push it into the array
       //
       $.each(this.results, function () {
         var i = uniq.indexOf(this[column]);
@@ -381,7 +388,7 @@
      *     { "id": "3", "friend": "Daisy", "pubtitle": "Coffee Fancy",  "pubyear": "2003" }
      *   ]
      *
-     * Calling `myMuster.serializeBy('id');` gives us 
+     * Calling `myMuster.serializeBy('id');` gives us a myMuster.results that looks like
      *
      *   [
      *     {
@@ -396,7 +403,7 @@
      *       "pubtitle": [ "Old Times", "Rocking Horse", "Bolts", "Coffee Fancy" ],
      *       "pubyear":  [ "2009", "2003" ],
      *     }
-     *   ]
+     *   ];
      *
      * But that's not quite right. Some of the pubyears got lost and can't be
      * properly associated with the pubtitles. So, optionally, specify a set of
@@ -406,8 +413,8 @@
      *     { "publication": {"title": "pubtitle", "year": "pubyear" },
      *   ]);
      *
-     * When your serialized Muster is created, it will be slightly more complex
-     * having nested properties.
+     * When your serialized Muster is created, myMuster.results will be
+     * slightly more complex having nested properties.
      *
      *   [
      *     {
@@ -434,7 +441,7 @@
      *         { "title": "Coffee Fancy",  "year": "2003" },
      *       ]
      *     }
-     *   ]
+     *   ];
      *
      * So the original joined results are maintained in their original fields,
      * but we get an additional field to handle these fields that are related as
@@ -447,6 +454,11 @@
      */
     serializeBy: function (uniqueColumn, customProperties) {
 
+      // Get an array of Musters all grouped by uniqueColumn, then create a
+      // clone of this Muster to house our serialized results. Empty the
+      // results of the clone. If the clone is empty, return it now (no further
+      // processing). 
+      //
       var columns,
         grouped = this.groupBy(uniqueColumn),
         clone = this.clone();
@@ -458,75 +470,53 @@
 
       columns = grouped[0].columns;
 
-      // add labels from custom properties
-      //
-      $.each(customProperties, function () {
-        var prop;
-        for (prop in this) {
-          if (this.hasOwnProperty(prop)) {
-            columns.push(prop);
-          }
-        }
-      });
-
-      /*
-       * TODO: This has become significantly more complicated with the
-       * implementaiton of #93. Document this stuff well since it looks very
-       * gnarly.
-       *
-       * For each row in each group, examine the values one at a time.
-       *
-       *   - If the value isn't yet defined in the output, just copy the
-       *     incoming value to the output
-       *
-       *   - If the value in the output is already defined and is a string, it
-       *     is a single value. We convert it to an array consisting of the
-       *     original value plus the incoming value.
-       *
-       *   - Otherwise, the output is already an array. Just push the new value
-       *     onto it unless it already exists.
-       *
-       * Once we figure out the row contents, we push it into the clone and
-       * return the clone at the end.
-       */
       $.each(grouped, function () {
         var mergedRow = {};
 
         $.each(this.results, function () {
           var row = this;
 
-          // add any custom properties
-          $.each(customProperties, function () {
-            var prop, attr, obj;
-            for (prop in this) {
-              if (this.hasOwnProperty(prop)) {
-                obj = {};
-                for (attr in this[prop]) {
-                  if (this[prop].hasOwnProperty(attr)) {
-                    obj[attr] = row[this[prop][attr]];
+          // Process customProperties
+          //
+          // For each custom property in each row in each group, add the defined
+          // attribute with the defined value. See main method documentation
+          // (above) for more information.
+          //
+          if (customProperties) {
+            $.each(customProperties, function () {
+              var prop, attr, obj;
+              for (prop in this) {
+                if (this.hasOwnProperty(prop)) {
+                  if (columns.indexOf(prop) < 0) {
+                    columns.push(prop);
                   }
+                  obj = {};
+                  for (attr in this[prop]) {
+                    if (this[prop].hasOwnProperty(attr)) {
+                      obj[attr] = row[this[prop][attr]];
+                    }
+                  }
+                  row[prop] = obj;
                 }
-                row[prop] = obj;
               }
-            }
-          });
+            });
+          }
 
+          // Set the value for each column. We check for and avoid creating
+          // duplicates as we insert (identical values will appear in adjacent
+          // cells when it's a join query).
+          //
+          // - If the merged cell isn't set, simply set it to the new value.
+          //
+          // - If the merged cell contains an array, simply push the new value
+          //   onto the array (as long as it doesn't already exist).
+          //
+          // - If the merged cell is set and is not an array, set the merged cell
+          //   to an array containing both values (as long as the new value isn't
+          //   the same as the old one).
+          //
           $.each(columns, function () {
 
-            /* Set the value for this column. We check for and avoid creating
-             * duplicates as we insert because of the nature of SQL queries.
-             * Identical values will appear in adjacent cells when it's a join
-             * query.
-             *
-             * If the merged cell isn't set, simply set it to the new value.
-             *
-             * If the merged cell contains an array, simply push the new value
-             * onto the array (as long as it doesn't already exist).
-             *
-             * If the merged cell is set and is not an array, set the merged
-             * cell to an array containing both values (as long as the new value
-             * isn't the same as the old one).
-             */
             if (mergedRow[this] === undefined) {
               mergedRow[this] = row[this];
             } else if (mergedRow[this] instanceof Array) {
@@ -552,6 +542,63 @@
       return this.serializeBy(uniqueColumn);
     },
 
+    /*
+     * Return a jQuery object containing a table.
+     *
+     * `columnSpec` defines the columns and their content. If columnSpec is
+     * undefined or null, all available columns are rendered in the default way
+     * with cells containing multiple values rendering those values in an
+     * unordered list.
+     *
+     * `columnSpec` is an array of strings or 2-element arrays defining the
+     * columns to display. For each columnSpec element,
+     *
+     *   - If the element is a String, it will be interpretted as the literal
+     *     column label that is passed to Muster in the query, and this String
+     *     will also be used as the table heading for that column.
+     *   - If the element is a 2-element array, the first element of the array
+     *     must be a String and will be used as the table heading for the
+     *     column. The second element of the array may be a String or a
+     *     function.
+     *     - If the second element is a String, the String must map the the
+     *       column in Muster that was defined in the query. For example,
+     *       perhaps the database uses the word 'title' but you want 'Book
+     *       Title':
+     *
+     *         [ 'Book Title', 'title' ]
+     *
+     *       - If the second element is a function, the function returns the
+     *         value used in each cell, calculated per row (the context of the
+     *         function has `this` referring to the current row). For example,
+     *         if your Muster object has first_name and last_name fields, you
+     *         might define
+     *
+     *           [ 'Full Name', function () { return this.first_name + ' ' + this.last_name; } ]
+     *
+     * All together now! Say you have the previously mentioned title and name
+     * fields as well as a Position field, you would define them in order:
+     *
+     *   [
+     *     'Position',
+     *     [ 'Full Name', function () { return this.first_name + ' ' + this.last_name; } ],
+     *     [ 'Book Title', 'title' ]
+     *   ]
+     *
+     *
+     *
+     * `parent` is an optional argument defining a jQuery selector or jQuery
+     * object to which the table will be appended after it is rendered the after
+     * the $(document).ready event has fired.
+     *
+     *
+     *
+     * `callback` is an optional function which is called after the table is rendered.
+     *
+     * N.B. `callback` does not itself check to see that $(document).ready has
+     *      fired, so any code that is dependent on the rendered table should be
+     *      wrapped in $(). You do, however, have access to the table itself as that
+     *      is stored in memory and manipulable even prior to being rendered.
+     */
     toTable: function (columnSpec, parent, callback) {
 
       var columns, columnLabels,
@@ -564,13 +611,19 @@
       } else {
         columns = [];
         columnLabels = [];
+
+        // If it's an array, the first element defines the label and the second
+        // the column value. If it's a string, we use the same for both.
+        //
+        // XXX we need the toString method here because of bugs in Safari and
+        // IE which cause typeof and instanceof to behave strangely with
+        // regards to Strings. See isString() method for more information.
+        //
         $.each(columnSpec, function () {
           if (this instanceof Array) {
             columnLabels.push(this[0]);
             columns.push(this[1]);
           } else if (isString(this)) {
-
-
             columns.push(this.toString());
             columnLabels.push(this.toString());
           }
