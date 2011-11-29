@@ -29,6 +29,7 @@
   'use strict';
 
   // Add stable merge sort method to Array prototype
+  //
   if (!Array.mergeSort) {
     Array.prototype.mergeSort = function (compare) {
 
@@ -36,6 +37,7 @@
         middle = Math.floor(length / 2);
 
       // define default comparison function if none is defined
+      //
       if (!compare) {
         compare = function (left, right) {
           if (left  <  right) {
@@ -52,6 +54,8 @@
         return this;
       }
 
+      // merge left and right arrays using comparison function `compare`
+      //
       function merge(left, right, compare) {
 
         var result = [];
@@ -85,6 +89,7 @@
   }
 
   // Add merge sort to jQuery if it's present
+  //
   if (window.jQuery !== undefined) {
     jQuery.fn.mergeSort = function (compare) {
       return jQuery(Array.prototype.mergeSort.call(this, compare));
@@ -98,6 +103,7 @@
 
 
 // Muster
+//
 (function (context, $) {
 
   'use strict'; // strict ECMAScript interpretation
@@ -105,6 +111,7 @@
 
 
   // Constants
+  //
   var POSSIBLE_PARAMETERS = [ 'database', 'select', 'from', 'where', 'order' ],
     DEFAULT_URL = 'https://apps.education.ucsb.edu/muster/';
 
@@ -114,9 +121,10 @@
   ///////////////////////////////////////////////////////////////////////////////
 
   // Constructor
+  //
   function Muster(args) {
 
-    if (typeof args === 'string' || args instanceof String) {
+    if (isString(args)) {
       this.database = args;
     } else if (args !== undefined) {
       this.url = args.url;
@@ -131,11 +139,13 @@
   // Constructor wrapper.
   // Whether called as a function or a constructor, it always returns an instance
   // of Muster, i.e. `Muster` and `new Muster()` are equivalent.
+  //
   function constructorWrapper(args) {
     return new Muster(args);
   }
 
   // Assemble the request URI
+  //
   function getRequestUri(url, database, params) {
 
     // each value is [ 'key', 'value' ] and will become 'key=value'
@@ -153,6 +163,17 @@
     parameterPairs.push('callback=?'); // jQuery JSONP support
 
     return [url, '?', parameterPairs.join('&')].join('');
+  }
+
+  // Return true if obj is a String
+  //
+  function isString(obj) {
+
+    // XXX We use both typeof and instance of to cover this weird bug
+    // in IE and Safari where reloading the page makes these things
+    // Strings instead of strings. O_o
+    //
+    return (typeof obj === 'string' || obj instanceof String);
   }
 
   /* Return a copy of the table which supports stable sorting when the table's
@@ -176,20 +197,22 @@
     table.find('th').css({cursor: 'pointer'}).click(function (event) {
 
       var sortedRows,
-        th = $(event.target), // the heading that was clicked
+        th = $(event.target),             // the heading that was clicked
         table = th.closest('table'),
         tbody = table.find('tbody'),
-        index = th.index() + 1, // the numerical position of the clicked heading
+        index = th.index() + 1,           // the numerical position of the clicked heading
         rows = table.find('tbody tr'),
-        sorted = th.hasClass('sorted'), // is the column already sorted?
+        sorted = th.hasClass('sorted'),   // is the column already sorted?
         rsorted = th.hasClass('rsorted'); // is the column already reverse sorted?
 
       // Remove sort statuses from all other headings
+      //
       th.siblings().removeClass('sorted').removeClass('rsorted');
 
       // If it's already sorted, the quickest solution is to just reverse it.
       // Otherwise, do a stable merge sort of the unsorted column and mark it
       // as sorted.
+      //
       if (sorted || rsorted) {
         th.toggleClass('sorted').toggleClass('rsorted');
         sortedRows = Array.prototype.reverse.apply(rows);
@@ -197,6 +220,7 @@
         sortedRows = rows.mergeSort(function (left, right) {
 
           // compare the text of each cell, case insensitive
+          //
           left  =  $(left).find('td:nth-child(' + index + ')').text().toLowerCase();
           right = $(right).find('td:nth-child(' + index + ')').text().toLowerCase();
 
@@ -223,6 +247,7 @@
   // Expose Muster constructor as method of 'context' (i.e. window.Muster). It's
   // not capitalized because it's a method of 'context' that returns an instance
   // of Muster. The Muster constructor should never be called directly.
+  //
   context.muster = constructorWrapper;
 
 
@@ -231,6 +256,7 @@
   // Muster's prototype
   // All public methods are defined here.
   ///////////////////////////////////////////////////////////////////////////////
+  //
   Muster.prototype = {
 
     query: function (query, callback) {
@@ -242,10 +268,14 @@
       });
     },
 
+    // Return true if there are no results
+    //
     isEmpty: function () {
       return this.results.length < 1;
     },
 
+    // Return a new copy of this Muster
+    //
     clone: function () {
 
       var property,
@@ -260,38 +290,61 @@
       return newMuster;
     },
 
-    filter: function (column, value) {
+    /*
+     * Return a copy of this Muster containing only the results for which
+     * `filterFunction` returns true.
+     *
+     * In `filterFunction`, `this` refers to the current row, so to return all
+     * of the results for which the first_name field starts with "R", you might
+     * do
+     *
+     *    myResults.filter(function () {
+     *      return this.first_name.indexOf('R') === 0;
+     *    });
+     */
+    filter: function (filterFunction) {
 
       var clone = this.clone();
 
       clone.results = $.grep(this.results, function (row) {
-        return row[column] === value;
+        return filterFunction.call(row);
       });
 
       return clone;
     },
 
-    get: function (column) {
-      var ret = [];
-      $.each(this.results, function () {
-        ret.push(this[column]);
-      });
-      return ret;
-    },
-
-    getUnique: function (column) {
-      return $.unique(this.get(column));
-    },
-
-    getFirst: function (column) {
-      return this.results[0][column];
-    },
-
+    /*
+     * Return an array of Musters where each row shares the same value for the
+     * `column` passed in.
+     *
+     * e.g. if your current Muster.results looked like 
+     *
+     *   myResults = [
+     *     {id: 7, name: 'Bob'},
+     *     {id: 7, name: 'Sue'},
+     *     {id: 9, name: 'Fred'},
+     *     {id: 9, name: 'Bob'},
+     *   ];
+     *
+     * then `myResults.groupBy('id');` would yield
+     *
+     *   [
+     *     [
+     *       {id: 7, name: 'Bob'},
+     *       {id: 7, name: 'Sue'}
+     *     ],
+     *     [
+     *       {id: 9, name: 'Fred'},
+     *       {id: 9, name: 'Bob'}
+     *     ]
+     *   ]
+     */
     groupBy: function (column) {
 
-      // ret is an array of arrays. Each array in ret shares the same value for
+      // XXX ret is an array of Musters. Each Muster shares the same value for
       // row[column]. uniq keeps track of whether we've encountered a value
       // before so we only traverse the results once.
+      //
       var ret = [],
         uniq = [],
         muster = this;
@@ -309,23 +362,23 @@
       return ret;
     },
 
-   /* 
-    * TODO: document customProperties arg and usage
-    *
-    * Return a modified Muster which joins together similar rows based on
-    * `uniqueColumn` (usually something like "id"). Columns with multiple
-    * values become nested.
-    *
-    * { "id": 2, "friend": "Bob" }
-    * { "id": 2, "friend": "Doug" }
-    * { "id": 3, "friend": "Sue" }
-    * { "id": 3, "friend": "Daisy" }
-    *
-    * becomes
-    *
-    * { "id": 2, "friend": [ "Bob", "Doug" ] }
-    * { "id": 3, "friend": [ "Sue", "Daisy" ] }
-    */
+    /*
+     * TODO: Document customProperties arg and usage.
+     *
+     * Return a modified Muster which joins together similar rows based on
+     * `uniqueColumn` (usually something like "id"). Columns with multiple
+     * values become nested.
+     *
+     * { "id": 2, "friend": "Bob" }
+     * { "id": 2, "friend": "Doug" }
+     * { "id": 3, "friend": "Sue" }
+     * { "id": 3, "friend": "Daisy" }
+     *
+     * becomes
+     *
+     * { "id": 2, "friend": [ "Bob", "Doug" ] }
+     * { "id": 3, "friend": [ "Sue", "Daisy" ] }
+     */
     serializeBy: function (uniqueColumn, customProperties) {
 
       var columns,
@@ -340,6 +393,7 @@
       columns = grouped[0].columns;
 
       // add labels from custom properties
+      //
       $.each(customProperties, function () {
         var prop;
         for (prop in this) {
@@ -349,7 +403,7 @@
         }
       });
 
-      /* 
+      /*
        * TODO: This has become significantly more complicated with the
        * implementaiton of #93. Document this stuff well since it looks very
        * gnarly.
@@ -426,9 +480,8 @@
       return clone;
     },
 
-    /*
-     * Legacy support for old syntax
-     */
+    // Legacy support for old syntax
+    //
     serializeJoinedResults: function (uniqueColumn) {
       return this.serializeBy(uniqueColumn);
     },
@@ -449,12 +502,9 @@
           if (this instanceof Array) {
             columnLabels.push(this[0]);
             columns.push(this[1]);
-          } else if (typeof this === 'string' || this instanceof String) {
+          } else if (isString(this)) {
 
-            //XXX We use both typeof and instance of to cover this weird bug in
-            //IE and Safari where reloading the page makes these things Strings
-            //instead of strings. O_o
-            // 
+
             columns.push(this.toString());
             columnLabels.push(this.toString());
           }
@@ -478,17 +528,20 @@
           if (typeof this === 'function') {
 
             // formatting function
+            //
             value = this.apply(row);
 
           } else if (row[this] instanceof Array) {
 
             // multiple values
+            //
             value = row[this].join('</li><li>');
             value = '<ul><li>' + value + '</li></ul>';
 
           } else {
 
             // just a string
+            //
             value = row[this];
           }
           tr.append(td.append(value));
@@ -510,6 +563,7 @@
   };
 
   // Add Array.indexOf to browsers that don't have it (i.e. IE)
+  //
   (function () {
     if (Array.indexOf === undefined) {
       Array.prototype.indexOf = function (obj) {
