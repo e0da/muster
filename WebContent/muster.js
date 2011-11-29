@@ -1,5 +1,5 @@
 /*!
- * Muster v1.8
+ * Muster v1.8.1
  * http://apps.education.ucsb.edu/redmine/projects/muster
  *
  * Copyright 2011, Justin Force
@@ -506,23 +506,87 @@
           // duplicates as we insert (identical values will appear in adjacent
           // cells when it's a join query).
           //
-          // - If the merged cell isn't set, simply set it to the new value.
-          //
-          // - If the merged cell contains an array, simply push the new value
-          //   onto the array (as long as it doesn't already exist).
-          //
-          // - If the merged cell is set and is not an array, set the merged cell
-          //   to an array containing both values (as long as the new value isn't
-          //   the same as the old one).
-          //
           $.each(columns, function () {
 
-            if (mergedRow[this] === undefined) {
+            // return true if a is equivalent to b. must both be strings or
+            // both be objects.
+            //
+            function equal(a, b) {
+              var p;
+              if (!a || !b) {
+                return false;
+              }
+              if (isString(a) && isString(b)) {
+                return a === b;
+              } else {
+                for (p in a) {
+                  if (a.hasOwnProperty(p) && a[p] !== b[p]) {
+                    return false;
+                  }
+                }
+              }
+              return true;
+            }
+
+            // true if the value of row[col] already exists in mergedRow[col].
+            // Need a function because it's possible for mergedRow[col] to
+            // contain a string, an object, or an array of strings or objects.
+            //
+            function alreadyExists(col) {
+              var exists = false;
+              if (mergedRow[col] instanceof Array) {
+                $.each(mergedRow[col], function () {
+                  if (equal(this, row[col])) {
+                    exists = true;
+                  }
+                });
+              } else {
+                if (equal(mergedRow[col], row[col])) {
+                  return true;
+                }
+              }
+              return exists;
+            }
+
+            // true if the object for the new row is empty (all fields are
+            // undefined)
+            //
+            function emptyObject(obj) {
+              var p;
+              if (isString(obj)) {
+                return false;
+              }
+              for (p in obj) {
+                if (obj.hasOwnProperty(p)) {
+                  if (obj[p]) {
+                    return false;
+                  }
+                }
+              }
+              return true;
+            }
+
+            // - If the new value is an empty object (its attributes are all
+            //   undefined), ignore it.
+            //
+            // - If the new value already exists in the merged cell, ignore it.
+            //
+            // - If the merged cell isn't set, simply set it to the new value.
+            //
+            // - If the merged cell contains an array, simply push the new value
+            //   onto the array
+            //
+            // - If the merged cell is set and is not an array, set the merged cell
+            //   to an array containing both values
+            // 
+            if (emptyObject(row[this])) {
+              return;
+            } else if (alreadyExists(row[this])) {
+              return;
+            } else if (mergedRow[this] === undefined) {
               mergedRow[this] = row[this];
             } else if (mergedRow[this] instanceof Array) {
-              if (mergedRow[this].indexOf(row[this]) < 0) {
-                mergedRow[this].push(row[this]);
-              }
+              mergedRow[this].push(row[this]);
             } else {
               if (mergedRow[this] !== row[this]) {
                 mergedRow[this] = [mergedRow[this], row[this]];
