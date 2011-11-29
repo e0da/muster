@@ -341,14 +341,15 @@
      */
     groupBy: function (column) {
 
-      // XXX ret is an array of Musters. Each Muster shares the same value for
-      // row[column]. uniq keeps track of whether we've encountered a value
-      // before so we only traverse the results once.
-      //
       var ret = [],
         uniq = [],
         muster = this;
 
+      // XXX If we have not encountered this value before, we record its
+      // occurrence and create a Muster clone, then set its results to an
+      // empty array. If we have seen this value before, we simply push it
+      // into the array
+      //
       $.each(this.results, function () {
         var i = uniq.indexOf(this[column]);
         if (i < 0) {
@@ -363,21 +364,86 @@
     },
 
     /*
-     * TODO: Document customProperties arg and usage.
-     *
      * Return a modified Muster which joins together similar rows based on
      * `uniqueColumn` (usually something like "id"). Columns with multiple
      * values become nested.
+     * 
+     * Say we have a Muster that looks like this:
      *
-     * { "id": 2, "friend": "Bob" }
-     * { "id": 2, "friend": "Doug" }
-     * { "id": 3, "friend": "Sue" }
-     * { "id": 3, "friend": "Daisy" }
+     *   myMuster.results = [
+     *     { "id": "2", "friend": "Bob",   "pubtitle": "Jump Up",       "pubyear": "2006" },
+     *     { "id": "2", "friend": "Bob",   "pubtitle": "Sit Down",      "pubyear": "2008" },
+     *     { "id": "2", "friend": "Bob",   "pubtitle": "Backflips",     "pubyear": "2008" },
+     *     { "id": "2", "friend": "Doug",  "pubtitle": "Fly Fishing",   "pubyear": "2010" },
+     *     { "id": "3", "friend": "Sue",   "pubtitle": "Old Times",     "pubyear": "2009" },
+     *     { "id": "3", "friend": "Sue",   "pubtitle": "Rocking Horse", "pubyear": "2009" },
+     *     { "id": "3", "friend": "Daisy", "pubtitle": "Bolts",         "pubyear": "2009" },
+     *     { "id": "3", "friend": "Daisy", "pubtitle": "Coffee Fancy",  "pubyear": "2003" }
+     *   ]
      *
-     * becomes
+     * Calling `myMuster.serializeBy('id');` gives us 
      *
-     * { "id": 2, "friend": [ "Bob", "Doug" ] }
-     * { "id": 3, "friend": [ "Sue", "Daisy" ] }
+     *   [
+     *     {
+     *       "id": "2",
+     *       "friend":   [ "Bob", "Doug" ],
+     *       "pubtitle": [ "Jump Up", "Sit Down", "Backflips", "Fly Fishing" ],
+     *       "pubyear":  [ "2006", "2008", "2010" ],
+     *     },
+     *     {
+     *       "id": "3",
+     *       "friend":   [ "Sue", "Daisy" ],
+     *       "pubtitle": [ "Old Times", "Rocking Horse", "Bolts", "Coffee Fancy" ],
+     *       "pubyear":  [ "2009", "2003" ],
+     *     }
+     *   ]
+     *
+     * But that's not quite right. Some of the pubyears got lost and can't be
+     * properly associated with the pubtitles. So, optionally, specify a set of
+     * `customProperties` as an array of objects of the form:
+     *
+     *   myMuster.serializeBy('id', [
+     *     { "publication": {"title": "pubtitle", "year": "pubyear" },
+     *   ]);
+     *
+     * When your serialized Muster is created, it will be slightly more complex
+     * having nested properties.
+     *
+     *   [
+     *     {
+     *       "id": "2",
+     *       "friend": [ "Bob", "Doug" ],
+     *       "pubtitle": [ "Jump Up", "Sit Down", "Backflips", "Fly Fishing" ],
+     *       "pubyear": [ "2006", "2008", "2010" ],
+     *       "publication": [
+     *         { "title": "Jump Up",     "year": "2006" },
+     *         { "title": "Sit Down",    "year": "2008" },
+     *         { "title": "Backflips",   "year": "2008" },
+     *         { "title": "Fly Fishing", "year": "2010" },
+     *       ]
+     *     },
+     *     {
+     *       "id": "3",
+     *       "friend":   [ "Sue", "Daisy" ],
+     *       "pubtitle": [ "Old Times", "Rocking Horse", "Bolts", "Coffee Fancy" ],
+     *       "pubyear":  [ "2009", "2003" ],
+     *       "publication": [
+     *         { "title": "Old Times",     "year": "2009" },
+     *         { "title": "Rocking Horse", "year": "2009" },
+     *         { "title": "Bolts",         "year": "2009" },
+     *         { "title": "Coffee Fancy",  "year": "2003" },
+     *       ]
+     *     }
+     *   ]
+     *
+     * So the original joined results are maintained in their original fields,
+     * but we get an additional field to handle these fields that are related as
+     * a unit. You could now find out some information about this person by
+     * referencing these fields directly.
+     *
+     *   myMuster[0].friend; // ["Bob", "Doug"];
+     *
+     *   myMuster[1].publication[2].title; // "Rocking Horse"
      */
     serializeBy: function (uniqueColumn, customProperties) {
 
