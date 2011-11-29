@@ -44,7 +44,7 @@
           return titleAndYear(this.publications.title, this.publications.year);
         }
       }]
-    ], '#researchInterests');
+    ], '#publications');
   });
 
   // ITGDD demo
@@ -69,11 +69,10 @@
       'Notes'
     ], '#itgdd');
   });
-  /*
 
   // Research Interests demo
   muster({
-    url: 'http://harold:8080/muster/',
+    url: 'https://apps.education.ucsb.edu/muster/',
     database: 'ggsedb'
   }).query({
     select: '*',
@@ -107,6 +106,5 @@
 
     $($('#researchInterests').append(table));
   });
-*/
 }(jQuery));
 
