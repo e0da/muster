@@ -1,5 +1,5 @@
 /*!
- * Muster v1.8.1
+ * Muster v1.8.2
  * http://apps.education.ucsb.edu/redmine/projects/muster
  *
  * Copyright 2011, Justin Force
@@ -532,7 +532,7 @@
             // Need a function because it's possible for mergedRow[col] to
             // contain a string, an object, or an array of strings or objects.
             //
-            function alreadyExists(col) {
+            function alreadyExistsAt(col) {
               var exists = false;
               if (mergedRow[col] instanceof Array) {
                 $.each(mergedRow[col], function () {
@@ -551,7 +551,7 @@
             // true if the object for the new row is empty (all fields are
             // undefined)
             //
-            function emptyObject(obj) {
+            function empty(obj) {
               var p;
               if (isString(obj)) {
                 return false;
@@ -579,9 +579,9 @@
             // - If the merged cell is set and is not an array, set the merged cell
             //   to an array containing both values
             // 
-            if (emptyObject(row[this])) {
+            if (empty(row[this])) {
               return;
-            } else if (alreadyExists(row[this])) {
+            } else if (alreadyExistsAt(this)) {
               return;
             } else if (mergedRow[this] === undefined) {
               mergedRow[this] = row[this];

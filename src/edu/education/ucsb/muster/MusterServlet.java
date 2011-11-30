@@ -1,5 +1,5 @@
 /*!
- * Muster v1.8.1
+ * Muster v1.8.2
  * https://apps.education.ucsb.edu/redmine/projects/muster
  * 
  * Copyright (c) 2011, Justin Force
@@ -47,6 +47,7 @@ public class MusterServlet extends HttpServlet {
 	private MusterConfiguration conf;
 
 	/**
+	 * 
 	 * If any of the files at these paths change, we should reinitialize the servlet.
 	 */
 	private static LinkedList<String> reloadFilePaths;
@@ -235,7 +236,7 @@ public class MusterServlet extends HttpServlet {
 	}
 
 	private String getStatus() {
-		StringBuffer out = new StringBuffer("Muster v1.8.1\n\n");
+		StringBuffer out = new StringBuffer("Muster v1.8.2\n\n");
 		for (DatabaseDefinition db : conf.databases) {
 			out.append(db.name + ":\t");
 			out.append(testConnectivity(db));
