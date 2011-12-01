@@ -1,5 +1,5 @@
 /*!
- * Muster v1.8.2
+ * Muster v1.8.3
  * http://apps.education.ucsb.edu/redmine/projects/muster
  *
  * Copyright 2011, Justin Force
@@ -517,7 +517,12 @@
                 return false;
               }
               if (isString(a) && isString(b)) {
-                return a === b;
+
+                // XXX have to use .toString here because in IE a === b and
+                // a.toString() === b.toString() aren't always equivalent, even
+                // though both are obviously strings.
+                //
+                return a.toString() === b.toString();
               } else {
                 for (p in a) {
                   if (a.hasOwnProperty(p) && a[p] !== b[p]) {

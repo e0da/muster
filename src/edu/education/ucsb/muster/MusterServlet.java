@@ -1,5 +1,5 @@
 /*!
- * Muster v1.8.2
+ * Muster v1.8.3
  * https://apps.education.ucsb.edu/redmine/projects/muster
  * 
  * Copyright (c) 2011, Justin Force
@@ -236,7 +236,7 @@ public class MusterServlet extends HttpServlet {
 	}
 
 	private String getStatus() {
-		StringBuffer out = new StringBuffer("Muster v1.8.2\n\n");
+		StringBuffer out = new StringBuffer("Muster v1.8.3\n\n");
 		for (DatabaseDefinition db : conf.databases) {
 			out.append(db.name + ":\t");
 			out.append(testConnectivity(db));

@@ -24,11 +24,11 @@
       [ 'publications', function () {
         var out = $('<ul>');
 
-        function titleAndYear(title, year) {
-          if (!title) {
+        function titleAndYear(pub) {
+          if (!pub || !pub.title) {
             return null;
           } else {
-            return title + (year ? ', ' + year : '');
+            return pub.title + (pub.year ? ', ' + pub.year : '');
           }
         }
 
@@ -37,11 +37,11 @@
             if (this === undefined) {
               return null;
             }
-            out.append($('<li>').text(titleAndYear(this.title, this.year)));
+            out.append($('<li>').text(titleAndYear(this)));
           });
           return out;
         } else {
-          return titleAndYear(this.publications.title, this.publications.year);
+          return titleAndYear(this.publications);
         }
       }]
     ], '#publications');
