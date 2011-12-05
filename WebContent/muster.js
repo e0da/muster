@@ -112,7 +112,7 @@
 
   // Constants
   //
-  var POSSIBLE_PARAMETERS = [ 'database', 'select', 'from', 'where', 'order' ],
+  var POSSIBLE_PARAMETERS = [ 'database', 'select', 'from', 'where', 'order', 'limit' ],
     DEFAULT_URL = 'https://apps.education.ucsb.edu/muster/';
 
   ///////////////////////////////////////////////////////////////////////////////
