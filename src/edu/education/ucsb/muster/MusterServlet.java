@@ -1,5 +1,5 @@
 /*!
- * Muster v1.8.3
+ * Muster v1.9
  * https://apps.education.ucsb.edu/redmine/projects/muster
  * 
  * Copyright (c) 2011, Justin Force
@@ -160,6 +160,12 @@ public class MusterServlet extends HttpServlet {
 		String order = request.getParameter("order");
 		String callback = request.getParameter("callback");
 		String nocache = request.getParameter("nocache");
+		long limit = Long.MAX_VALUE;
+		try {
+			limit = Long.parseLong(request.getParameter("limit"));
+		} catch (Exception e) {
+			// That's ok. Just use the default -1.
+		}
 
 		// output status if requested
 		boolean callbackSet = callback != null; // true if callback is set
@@ -177,6 +183,8 @@ public class MusterServlet extends HttpServlet {
 		// Construct query string
 		String query = "SELECT " + select + " FROM " + from + ((where == null) ? "" : " WHERE " + where)
 				+ ((order == null) ? "" : " ORDER BY " + order);
+		
+		String cacheKey = query + Long.toString(limit);
 
 		// Attempt to retrieve query from cache. If it's expired or not present,
 		// perform the query and cache the result.
@@ -194,18 +202,18 @@ public class MusterServlet extends HttpServlet {
 		// If nocache is requested, make sure to get a fresh copy of this record
 		if (noCache) {
 			try {
-				cache.remove(query);
+				cache.remove(cacheKey);
 			} catch (JustacheKeyNotFoundException e) {
 				// That's ok. You can request nocache even if nothing is cached.
 			}
 		}
 
 		try {
-			out = cache.get(query);
+			out = cache.get(cacheKey);
 		} catch (JustacheKeyNotFoundException e) {
 			try {
-				out = getOutputAsJson(database, query);
-				cache.put(query, out);
+				out = getOutputAsJson(database, query, limit);
+				cache.put(cacheKey, out);
 			} catch (SQLException e1) {
 				addException(e1, "SQLException: " + query);
 			} catch (NullPointerException e1) {
@@ -236,7 +244,7 @@ public class MusterServlet extends HttpServlet {
 	}
 
 	private String getStatus() {
-		StringBuffer out = new StringBuffer("Muster v1.8.3\n\n");
+		StringBuffer out = new StringBuffer("Muster v1.9\n\n");
 		for (DatabaseDefinition db : conf.databases) {
 			out.append(db.name + ":\t");
 			out.append(testConnectivity(db));
@@ -282,7 +290,7 @@ public class MusterServlet extends HttpServlet {
 		}
 	}
 
-	private String getOutputAsJson(String database, String query) throws SQLException {
+	private String getOutputAsJson(String database, String query, long limit) throws SQLException {
 
 		// The output string
 		StringBuffer out = new StringBuffer();
@@ -328,7 +336,7 @@ public class MusterServlet extends HttpServlet {
 		// Add column values
 		out.append("  \"results\" : [ \n");
 
-		while (results.next()) {
+		for (int i = 0; i < limit && results.next(); i++) {
 			out.append(rowAsJson(results, columns));
 		}
 
