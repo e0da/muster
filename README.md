@@ -16,6 +16,14 @@ You can get sortable table of your data with custom headers just by doing:
       ], '#myTable')
     });
 
+And your table will be injected into the element with id myTable such as 
+
+    <div id=myTable></div>
+
+You shouldn't wait for the page to load (i.e. document.ready). Muster will wait
+for the document to load to inject the table, but can retrieve and manipulate
+your data as the page loads.
+
 For more information, see the inline documentation in `muster.js`.
 
 ## Copyright ##
