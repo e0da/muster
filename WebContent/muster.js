@@ -1,5 +1,5 @@
 /*!
- * Muster v1.9
+ * Muster v1.9.1
  * http://apps.education.ucsb.edu/redmine/projects/muster
  *
  * Copyright 2011, Justin Force
@@ -202,7 +202,7 @@
    *      simply reversed.
    */
   function getSortableTable(table) {
-    table.find('th').css({cursor: 'pointer'}).click(function (event) {
+    table.find('th').addClass('muster_sortable').click(function (event) {
 
       var sortedRows,
         th = $(event.target),             // the heading that was clicked
