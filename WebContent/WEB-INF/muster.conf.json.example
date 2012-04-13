@@ -1,19 +1,23 @@
 {
   "databases" : [
     {
-      "name" : "ggsedb",
-      "url" : "",
-      "username" : "",
-      "password" : "",
-      "driver" : ""
+      "name" : "mydb",
+      "url" : "jdbc:filemaker://localhost/MyDB",
+      "username" : "muster",
+      "password" : "secret",
+      "driver" : "com.filemaker.jdbc.Driver"
     },
     {
-      "name" : "courses",
-      "url" : "",
-      "username" : "",
-      "password" : "",
-      "driver" : ""
+      "name" : "otherdb",
+      "url" : "jdbc:filemaker://localhost/OtherDB",
+      "username" : "muster",
+      "password" : "secret",
+      "driver" : "com.filemaker.jdbc.Driver"
     }
-  ]
+  ],
+  "reloadFilePath" : "/tmp/muster.reload",
+  "_productionReloadFilePath" : "/WEB-INF/muster.reload",
+  "cacheTTL" : 180000,
+  "cacheMaxLength" : 128,
+  "exceptionQueueLength" : 10
 }
-
