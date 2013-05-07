@@ -2,19 +2,21 @@
 
 You can get sortable table of your data with custom headers just by doing:
 
-    muster('mydb').query({
-      select: '*',
-      from: 'users',
-      where: 'first_name is not null'
-    }, function () {
-      this.toTable(
-        [
-          ['First Name', 'first_name'],
-          ['Last Name', 'last_name'],
-          'email',
-          'phone'
-      ], '#myTable')
-    });
+```javascript
+muster('mydb').query({
+  select: '*',
+  from: 'users',
+  where: 'first_name is not null'
+}, function () {
+  this.toTable(
+    [
+      ['First Name', 'first_name'],
+      ['Last Name', 'last_name'],
+      'email',
+      'phone'
+  ], '#myTable')
+});
+```
 
 And your table will be injected into the element with id myTable such as 
 
